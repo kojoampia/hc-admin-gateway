@@ -1,4 +1,7 @@
 {
+  "parserOptions": {
+    "extraFileExtensions": ".yml"
+  },
   "compilerOptions": {
     "baseUrl": "src/main/webapp/",
     "outDir": "./target/out-tsc/root",
