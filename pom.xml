@@ -5,10 +5,10 @@
 
     <groupId>net.jojoaddison</groupId>
     <artifactId>patient-gateway</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
     <packaging>jar</packaging>
     <name>Patient Gateway</name>
-    <description>Description for Patient Gateway</description>
+    <description>Patient Authentication and Authorization Gateway</description>
 
     <properties>
         <!--
