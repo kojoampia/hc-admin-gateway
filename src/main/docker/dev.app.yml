@@ -1,0 +1,48 @@
+# This configuration is intended for development purpose, it's **your** responsibility to harden it for production
+name: patientgateway
+services:
+  app:
+    image: patientgateway
+    env_file: .env
+    environment:
+      - _JAVA_OPTIONS=-Xmx256m -Xms128m
+      - SPRING_PROFILES_ACTIVE=dev,swagger
+      - MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
+      - EUREKA_INSTANCE_APPNAME=patientgateway
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/eureka
+      - SPRING_CLOUD_CONFIG_URI=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/config
+      - SPRING_DATA_MONGODB_URI=mongodb://dev_mongodb:27017
+      - SPRING_DATA_MONGODB_DATABASE=PatientGateway
+      - JHIPSTER_SLEEP=5 # gives time for other services to boot before the application
+      - KAFKA_BOOTSTRAPSERVERS=kafka:9092
+      - SERVER_PORT=2081
+      - JHIPSTER_MAIL_FROM=$${SMTP_MAIL_FROM}
+      - JHIPSTER_MAIL_BASEURL=$${SMTP_MAIL_BASE}
+      # SMTP Mail Config Start
+      - SPRING_MAIL_USERNAME=$${SMTP_MAIL_USER}
+      - SPRING_MAIL_PASSWORD=$${SMTP_MAIL_PASSWORD}
+      - SPRING_MAIL_HOST=$${SMTP_MAIL_SERVER}
+      - SPRING_MAIL_PORT=$${SMTP_MAIL_PORT}
+      - SPRING_MAIL_FROM=$${SMTP_MAIL_FROM}
+      # SMTP Mail Config End
+      - SPRING_MAIL_TEST_CONNECTION=true
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_DEBUG=true
+      #- SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_SOCKETFACTORY_PORT=465
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_SOCKETFACTORY_CLASS=javax.net.ssl.SSLSocketFactory
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE=true
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_TRANSPORT_PROTOCOL=smtp
+      - SPRINT_MAIL_PROPERTIES_MAIL_SMTP_TIMEOUT=5000
+      - SPRINT_MAIL_PROPERTIES_MAIL_SMTP_WRITETIMEOUT=5000
+      - SPRINT_MAIL_PROPERTIES_MAIL_SMTP_CONNECTIONTIMEOUT=5000
+      - MAIL_SMTP_STARTTLS_ENABLE=false
+    ports:
+      - 127.0.0.1:5055:5055
+    networks:
+      - devnet
+
+networks:
+  devnet:
+    external:
+      name: devnet

@@ -22,24 +22,3 @@ services:
       interval: 5s
       timeout: 5s
       retries: 40
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      jhipster-registry:
-        condition: service_healthy
-  mongodb:
-    extends:
-      file: ./mongodb.yml
-      service: mongodb
-  jhipster-registry:
-    extends:
-      file: ./jhipster-registry.yml
-      service: jhipster-registry
-  kafka:
-    extends:
-      file: ./kafka.yml
-      service: kafka
-  zookeeper:
-    extends:
-      file: ./kafka.yml
-      service: zookeeper
