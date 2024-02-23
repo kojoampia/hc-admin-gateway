@@ -1,10 +1,10 @@
 
-${AnsiColor.GREEN}██╗  ██╗${AnsiColor.WHITE}       ${AnsiColor.BRIGHT_BLUE}   ██████╗
-${AnsiColor.GREEN}██║  ██║${AnsiColor.WHITE}       ${AnsiColor.BRIGHT_BLUE}  ██╔════╝
-${AnsiColor.GREEN}███████║${AnsiColor.WHITE} █████╗${AnsiColor.BRIGHT_BLUE}  ██║        
-${AnsiColor.GREEN}██╔══██║${AnsiColor.WHITE} ╚════╝${AnsiColor.BRIGHT_BLUE}  ██║        
-${AnsiColor.GREEN}██║  ██║${AnsiColor.WHITE}       ${AnsiColor.BRIGHT_BLUE}  ╚██████╗   
-${AnsiColor.GREEN}╚═╝  ╚═╝${AnsiColor.WHITE}       ${AnsiColor.BRIGHT_BLUE}   ╚═════╝   
+${AnsiColor.GREEN}██╗  ██╗${AnsiColor.WHITE}${AnsiColor.BRIGHT_BLUE}   ██████╗
+${AnsiColor.GREEN}██║  ██║${AnsiColor.WHITE}${AnsiColor.BRIGHT_BLUE}  ██╔════╝
+${AnsiColor.GREEN}███████║${AnsiColor.WHITE}${AnsiColor.BRIGHT_BLUE}  ██║        
+${AnsiColor.GREEN}██╔══██║${AnsiColor.WHITE}${AnsiColor.BRIGHT_BLUE}  ██║        
+${AnsiColor.GREEN}██║  ██║${AnsiColor.WHITE}${AnsiColor.BRIGHT_BLUE}  ╚██████╗   
+${AnsiColor.GREEN}╚═╝  ╚═╝${AnsiColor.WHITE}${AnsiColor.BRIGHT_BLUE}   ╚═════╝   
 
 ${AnsiColor.YELLOW}:: JojoAddison Information Systems Consultancy 🤓 
 ${AnsiColor.DEFAULT} :: Running Spring Boot ${spring-boot.version} :: Startup profile(s) ${spring.profiles.active} ::

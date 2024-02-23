@@ -15,7 +15,9 @@ services:
       - SPRING_DATA_MONGODB_DATABASE=PatientGateway
       - JHIPSTER_SLEEP=5 # gives time for other services to boot before the application
       - KAFKA_BOOTSTRAPSERVERS=kafka:9092
-      - SERVER_PORT=2081
+      - SERVER_PORT=5505
+      # JHIPSTER CONFIG
+      - JHIPSTER_METRICS_LOGS_ENABLED=false
       - JHIPSTER_MAIL_FROM=$${SMTP_MAIL_FROM}
       - JHIPSTER_MAIL_BASEURL=$${SMTP_MAIL_BASE}
       # SMTP Mail Config Start
@@ -41,8 +43,17 @@ services:
       - 127.0.0.1:5055:5055
     networks:
       - devnet
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:5055/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
 
 networks:
   devnet:
-    external:
-      name: devnet
+    external: true
+    name: devnet
