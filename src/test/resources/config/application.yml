@@ -13,13 +13,6 @@
 # http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
 # ===================================================================
 
-eureka:
-  client:
-    enabled: false
-  instance:
-    appname: patientGateway
-    instanceId: patientGateway:${spring.application.instance-id:${random.value}}
-
 mongock:
   migration-scan-package:
     - net.jojoaddison.config.dbmigrations
@@ -36,7 +29,12 @@ spring:
     exclude:
       - org.springframework.cloud.gateway.config.GatewayMetricsAutoConfiguration
   cloud:
-    config:
+    consul:
+      discovery:
+        enabled: false
+        instanceId: ${spring.application.name}:${spring.application.instance-id:${random.value}}
+      config:
+        enabled: false
       enabled: false
     function:
       definition: kafkaConsumer;kafkaProducer

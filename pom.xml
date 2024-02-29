@@ -4,11 +4,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.jojoaddison</groupId>
-    <artifactId>patient-gateway</artifactId>
+    <artifactId>patientgateway</artifactId>
     <version>0.0.1</version>
     <packaging>jar</packaging>
     <name>Patient Gateway</name>
-    <description>Patient Authentication and Authorization Gateway</description>
+    <description>Description for Patient Gateway</description>
 
     <properties>
         <!--
@@ -31,8 +31,6 @@
         <archunit-junit5.version>1.2.1</archunit-junit5.version>
         <blockhound-junit-platform.version>1.0.8.RELEASE</blockhound-junit-platform.version>
         <checkstyle.version>10.12.5</checkstyle.version>
-        <checksum-maven-plugin.version>1.11</checksum-maven-plugin.version>
-        <frontend-maven-plugin.version>1.15.0</frontend-maven-plugin.version>
         <git-commit-id-maven-plugin.version>7.0.0</git-commit-id-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.11</jacoco-maven-plugin.version>
         <jib-maven-plugin.architecture>amd64</jib-maven-plugin.architecture>
@@ -40,7 +38,6 @@
         <jib-maven-plugin.version>3.4.0</jib-maven-plugin.version>
         <lifecycle-mapping.version>1.0.0</lifecycle-mapping.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
-        <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
         <maven-checkstyle-plugin.version>3.3.1</maven-checkstyle-plugin.version>
         <maven-clean-plugin.version>3.3.2</maven-clean-plugin.version>
         <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
@@ -261,15 +258,15 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-config</artifactId>
+            <artifactId>spring-cloud-starter-consul-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -316,7 +313,7 @@
 
     <build>
         <defaultGoal>spring-boot:run</defaultGoal>
-        <finalName>hc-${project.artifactId}</finalName>
+        <finalName>${project.artifactId}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -438,7 +435,7 @@
                             </platforms>
                         </from>
                         <to>
-                            <image>patientgateway:latest</image>
+                            <image>${build.finalName}:${project.version}</image>
                         </to>
                         <container>
                             <entrypoint>
@@ -696,6 +693,24 @@
                     </configuration>
                 </plugin>
                 <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-war-plugin</artifactId>
+                    <version>${maven-war-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>default-war</id>
+                            <goals>
+                                <goal>war</goal>
+                            </goals>
+                            <phase>package</phase>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <warSourceIncludes>WEB-INF/**,META-INF/**</warSourceIncludes>
+                        <failOnMissingWebXml>false</failOnMissingWebXml>
+                    </configuration>
+                </plugin>
+                <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>properties-maven-plugin</artifactId>
                     <version>${properties-maven-plugin.version}</version>
@@ -895,7 +910,7 @@
                                 </goals>
                             </execution>
                         </executions>
-                    </plugin>                    
+                    </plugin>
                     <plugin>
                         <groupId>io.github.git-commit-id</groupId>
                         <artifactId>git-commit-id-maven-plugin</artifactId>

@@ -2,22 +2,26 @@
 name: patientgateway
 services:
   app:
-    image: patientgateway
+    image: patientgateway:0.0.1
     env_file: .env
     environment:
       - _JAVA_OPTIONS=-Xmx256m -Xms128m
+      - SERVER_PORT=5505
       - SPRING_PROFILES_ACTIVE=dev,swagger
       - MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
-      - EUREKA_INSTANCE_APPNAME=patientgateway
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/eureka
-      - SPRING_CLOUD_CONFIG_URI=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/config
+      - EUREKA_CLIENT_ENABLED=false
+      #    - EUREKA_INSTANCE_APPNAME=patientgateway
+      #    - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/eureka
+      #    - SPRING_CLOUD_CONFIG_URI=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/config
+      - SPRING_CLOUD_CONSUL_HOST=dev_consul
+      - SPRING_CLOUD_CONSUL_PORT=8500
       - SPRING_DATA_MONGODB_URI=mongodb://dev_mongodb:27017
       - SPRING_DATA_MONGODB_DATABASE=PatientGateway
-      - JHIPSTER_SLEEP=5 # gives time for other services to boot before the application
-      - KAFKA_BOOTSTRAPSERVERS=kafka:9092
-      - SERVER_PORT=5505
+      - SPRING_CLOUD_STREAM_KAFKA_BROKERS=dev_kafka:9092
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=dev_kafka:9092
       # JHIPSTER CONFIG
-      - JHIPSTER_METRICS_LOGS_ENABLED=true
+      - JHIPSTER_SLEEP=5 # gives time for other services to boot before the application
+      #- JHIPSTER_METRICS_LOGS_ENABLED=true
       - JHIPSTER_MAIL_FROM=$${SMTP_MAIL_FROM}
       - JHIPSTER_MAIL_BASEURL=$${SMTP_MAIL_BASE}
       # SMTP Mail Config Start

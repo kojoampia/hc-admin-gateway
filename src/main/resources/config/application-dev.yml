@@ -20,13 +20,6 @@ logging:
     org.hibernate.SQL: DEBUG
     net.jojoaddison: DEBUG
 
-eureka:
-  instance:
-    prefer-ip-address: true
-  client:
-    service-url:
-      defaultZone: http://admin:${jhipster.registry.password}@localhost:8761/eureka/
-
 management:
   zipkin: # Use the "zipkin" Maven profile to have the Spring Cloud Zipkin dependencies
     tracing:
@@ -46,13 +39,21 @@ spring:
     serialization:
       indent-output: true
   cloud:
-    config:
-      uri: http://admin:${jhipster.registry.password}@localhost:8761/config
-      # name of the config server's property source (file.yml) that we want to use
-      name: patientGateway
-      profile: dev
-      label: main # toggle to switch to a different version of the configuration as stored in git
-      # it can be set to any label, branch or commit of the configuration source Git repository
+    consul:
+      config:
+        fail-fast: false # if not in "prod" profile, do not force to use Spring Cloud Config
+        format: yaml
+        profile-separator: '-'
+      discovery:
+        prefer-ip-address: true
+        tags:
+          - profile=${spring.profiles.active}
+          - version=#project.version#
+          - git-version=${git.commit.id.describe:}
+          - git-commit=${git.commit.id.abbrev:}
+          - git-branch=${git.branch:}
+      host: localhost
+      port: 8500
   data:
     mongodb:
       uri: mongodb://localhost:27017/patientGateway?waitQueueMultiple=1000
@@ -81,14 +82,12 @@ jhipster:
       enabled: false
       limit: 100000
       duration-in-seconds: 3600
-  registry:
-    password: admin
   # CORS is only enabled by default with the "dev" profile
   cors:
     # Allow Ionic for JHipster by default (* no longer allowed in Spring Boot 2.4+)
-    allowed-origins: 'http://localhost:8100,https://localhost:8100,http://localhost:9000,https://localhost:9000,http://localhost:4200,https://localhost:4200'
-    # Enable CORS when running in JojoAddison Work Dev Environment
-    allowed-origin-patterns: 'https://*.jojoaddison.net,http://localhost:*'
+    allowed-origins: 'http://localhost:8100,https://localhost:8100,http://localhost:9000,https://localhost:9000'
+    # Enable CORS when running in GitHub Codespaces
+    allowed-origin-patterns: 'https://*.githubpreview.dev'
     allowed-methods: '*'
     allowed-headers: '*'
     exposed-headers: 'Authorization,Link,X-Total-Count,X-${jhipster.clientApp.name}-alert,X-${jhipster.clientApp.name}-error,X-${jhipster.clientApp.name}-params'
