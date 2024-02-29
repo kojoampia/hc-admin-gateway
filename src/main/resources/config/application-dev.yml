@@ -56,7 +56,7 @@ spring:
       port: 8500
   data:
     mongodb:
-      uri: mongodb://localhost:27017/patientGateway?waitQueueMultiple=1000
+      uri: mongodb://localhost:27017/PatientGateway?waitQueueMultiple=1000
   mail:
     host: localhost
     port: 25

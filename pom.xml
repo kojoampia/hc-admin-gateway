@@ -437,6 +437,7 @@
                         <to>
                             <image>${build.finalName}:${project.version}</image>
                         </to>
+                        <!--docker-registry.jojoaddison.net/hc/-->
                         <container>
                             <entrypoint>
                                 <shell>bash</shell>
