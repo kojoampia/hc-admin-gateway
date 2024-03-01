@@ -2,7 +2,7 @@
 name: patientgateway
 services:
   app:
-    image: docker-registry.jojoaddison.net/hc/patientgateway:0.0.1
+    image: patientgateway:0.0.1
     env_file: .env
     environment:
       - _JAVA_OPTIONS=-Xmx256m -Xms128m
