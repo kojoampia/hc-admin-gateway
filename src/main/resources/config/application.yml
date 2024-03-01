@@ -212,13 +212,13 @@ jhipster:
   clientApp:
     name: 'patientGatewayApp'
   # By default CORS is disabled. Uncomment to enable.
-  # cors:
-  #   allowed-origins: "http://localhost:8100,http://localhost:9000"
-  #   allowed-methods: "*"
-  #   allowed-headers: "*"
-  #   exposed-headers: "Authorization,Link,X-Total-Count,X-${jhipster.clientApp.name}-alert,X-${jhipster.clientApp.name}-error,X-${jhipster.clientApp.name}-params"
-  #   allow-credentials: true
-  #   max-age: 1800
+  cors:
+    allowed-origins: 'http://localhost:4200,http://localhost:5501,http://localhost:5502,http://localhost:5503,http://localhost:5504,http://localhost:5505,http://localhost:5506'
+    allowed-methods: '*'
+    allowed-headers: '*'
+    exposed-headers: 'Authorization,Link,X-Total-Count,X-${jhipster.clientApp.name}-alert,X-${jhipster.clientApp.name}-error,X-${jhipster.clientApp.name}-params'
+    allow-credentials: true
+    max-age: 1800
   mail:
     from: patientGateway@localhost
   api-docs:
