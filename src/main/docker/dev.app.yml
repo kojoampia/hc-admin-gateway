@@ -9,10 +9,12 @@ services:
       - SERVER_PORT=5505
       - SPRING_PROFILES_ACTIVE=dev,swagger
       - MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
-      - EUREKA_CLIENT_ENABLED=false
-      #    - EUREKA_INSTANCE_APPNAME=patientgateway
-      #    - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/eureka
-      #    - SPRING_CLOUD_CONFIG_URI=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/config
+      # CORS CONFIG
+      - CORS_ALLOWED_ORIGINS="*.jojoaddison.net,patientservice,patientdashboard"
+      - CORS_ALLOWED_METHODS="*"
+      - CORS_ALLOWED_HEADERS="*"
+      - CORS_ALLOWED_CREDENTIALS=true
+      - CORS_EXPOSED_HEADERS="Authorization,Link,X-Total-Count"
       - SPRING_CLOUD_CONSUL_HOST=dev_consul
       - SPRING_CLOUD_CONSUL_PORT=8500
       - SPRING_DATA_MONGODB_URI=mongodb://dev_mongodb:27017
