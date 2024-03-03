@@ -6,6 +6,8 @@ services:
     env_file: .env
     environment:
       - _JAVA_OPTIONS=-Xmx256m -Xms128m
+      - LOGGING_LEVEL_ROOT=DEBUG
+      - LOGGING_LEVEL_NET_JOJOADDISON=DEBUG
       - SERVER_PORT=5505
       - SPRING_PROFILES_ACTIVE=dev,swagger
       - MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
@@ -15,6 +17,7 @@ services:
       - CORS_ALLOWED_HEADERS=*
       - CORS_ALLOWED_CREDENTIALS=true
       - CORS_EXPOSED_HEADERS=Authorization,Link,X-Total-Count
+      # SPRING CLOUD
       - SPRING_CLOUD_CONSUL_HOST=dev_consul
       - SPRING_CLOUD_CONSUL_PORT=8500
       - SPRING_DATA_MONGODB_URI=mongodb://dev_mongodb:27017
