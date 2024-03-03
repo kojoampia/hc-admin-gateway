@@ -1,0 +1,99 @@
+{
+  "properties": [
+    {
+      "name": "jhipster.cors.allowed-origin-patterns",
+      "type": "java.lang.String",
+      "description": "A description for 'jhipster.cors.allowed-origin-patterns'"
+    },
+    {
+      "name": "spring.cloud.consul.config.fail-fast",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.cloud.consul.config.fail-fast'"
+    },
+    {
+      "name": "spring.cloud.consul.discovery",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.cloud.consul.discovery'"
+    },
+    {
+      "name": "spring.cloud.consul.discovery.tags",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.cloud.consul.discovery.tags'"
+    },
+    {
+      "name": "spring.cloud.consul.host",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.cloud.consul.host'"
+    },
+    {
+      "name": "spring.cloud.consul.port",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.cloud.consul.port'"
+    },
+    {
+      "name": "spring.cloud.consul.config.format",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.cloud.consul.config.format'"
+    },
+    {
+      "name": "spring.cloud.consul.port",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.cloud.consul.port'"
+    },
+    {
+      "name": "spring.cloud.consul.config.profile-separator",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.cloud.consul.config.profile-separator'"
+    },
+    {
+      "name": "reactive.feign.circuit.breaker.enabled",
+      "type": "java.lang.String",
+      "description": "A description for 'reactive.feign.circuit.breaker.enabled'"
+    },
+    {
+      "name": "spring.cloud.consul.config.watch.enabled",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.cloud.consul.config.watch.enabled'"
+    },
+    {
+      "name": "spring.output.ansi.console-available",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.output.ansi.console-available'"
+    },
+    {
+      "name": "spring.devtools.restart.enabled",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.devtools.restart.enabled'"
+    },
+    {
+      "name": "spring.devtools.livereload.enabled",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.devtools.livereload.enabled'"
+    },
+    {
+      "name": "logging.level.tech.jhipster",
+      "type": "java.lang.String",
+      "description": "A description for 'logging.level.tech.jhipster'"
+    },
+    {
+      "name": "logging.level.net.jojoaddison",
+      "type": "java.lang.String",
+      "description": "A description for 'logging.level.net.jojoaddison'"
+    },
+    {
+      "name": "spring.devtools.restart.additional-exclude",
+      "type": "java.lang.String",
+      "description": "A description for 'spring.devtools.restart.additional-exclude'"
+    },
+    {
+      "name": "configserver.name",
+      "type": "java.lang.String",
+      "description": "A description for 'configserver.name'"
+    },
+    {
+      "name": "configserver.status",
+      "type": "java.lang.String",
+      "description": "A description for 'configserver.status'"
+    }
+  ]
+}
