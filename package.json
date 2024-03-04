@@ -54,6 +54,7 @@
     "prepare": "husky install",
     "prettier:check": "prettier --check \"{,src/**/,.blueprint/**/}*.{md,json,yml,html,java}\"",
     "prettier:format": "prettier --write \"{,src/**/,.blueprint/**/}*.{md,json,yml,html,java}\"",
+    "rebuild:dev": "npm run java:docker:dev && npm run docker:dev:down && npm run docker:dev:up && npm run docker:dev:logs",
     "services:up": "docker compose -f src/main/docker/services.yml up --wait"
   },
   "config": {

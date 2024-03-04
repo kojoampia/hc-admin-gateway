@@ -233,7 +233,7 @@ jhipster:
     contact-email:
     license: unlicensed
     license-url:
-#  security:
+  security:
 # ===================================================================
 # Application specific properties
 # Add your own application properties here, see the ApplicationProperties class
