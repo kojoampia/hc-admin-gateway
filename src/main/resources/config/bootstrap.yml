@@ -25,6 +25,18 @@ spring:
           - git-commit=${git.commit.id.abbrev:}
           - git-branch=${git.branch:}
           - context-path=${server.servlet.context-path:}
-
+        metadata:
+          - profile=${spring.profiles.active}
+          - version=#project.version#
+          - git-version=${git.commit.id.describe:}
+          - git-commit=${git.commit.id.abbrev:}
+          - git-branch=${git.branch:}
+          - context-path=${server.servlet.context-path:}
       host: localhost
       port: 8500
+#    gateway:
+#      routes:
+#        - id: patientservice
+#          uri: http://localhost:5506
+#          predicates:
+#            - Path:/patientservice/**

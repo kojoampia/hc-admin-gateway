@@ -3,6 +3,7 @@ name: patientgateway
 services:
   app:
     image: patientgateway:0.0.1
+    container_name: patientgateway
     env_file: .env
     environment:
       - _JAVA_OPTIONS=-Xmx256m -Xms128m
