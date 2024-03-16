@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.jojoaddison</groupId>
-    <artifactId>patientgateway</artifactId>
+    <artifactId>hc-patient-gateway</artifactId>
     <version>0.0.1</version>
     <packaging>jar</packaging>
     <name>Patient Gateway</name>

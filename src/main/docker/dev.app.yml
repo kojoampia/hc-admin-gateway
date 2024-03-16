@@ -2,8 +2,9 @@
 name: patientgateway
 services:
   app:
-    image: patientgateway:0.0.1
-    container_name: patientgateway
+    image: hc-patient-gateway:0.0.1
+    container_name: hc-patient-gateway
+    hostname: patient-gateway
     env_file: .env
     environment:
       - _JAVA_OPTIONS=-Xmx256m -Xms128m
