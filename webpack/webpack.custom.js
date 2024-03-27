@@ -30,7 +30,7 @@ module.exports = async (config, options, targetOptions) => {
         },
       }),
       new WebpackNotifierPlugin({
-        title: 'Patient Gateway',
+        title: 'admin Gateway',
         contentImage: path.join(__dirname, 'logo-jhipster.png'),
       }),
     );

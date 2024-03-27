@@ -16,7 +16,7 @@ export version=$1
 
 git tag "v$version"
 
-echo "Building and Deploying to HealthConnect Patient Admin Gateway version $version"
+echo "Building and Deploying to HealthConnect admin Admin Gateway version $version"
 
 name=br-admin-gateway
 folder=`pwd`

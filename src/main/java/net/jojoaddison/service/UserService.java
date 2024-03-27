@@ -2,7 +2,8 @@ package net.jojoaddison.service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 import net.jojoaddison.config.Constants;
 import net.jojoaddison.domain.Authority;
 import net.jojoaddison.domain.User;

@@ -3,7 +3,10 @@ package net.jojoaddison.web.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import net.jojoaddison.IntegrationTest;
 import net.jojoaddison.domain.Authority;

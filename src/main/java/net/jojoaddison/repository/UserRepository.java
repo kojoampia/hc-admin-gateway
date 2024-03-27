@@ -2,7 +2,7 @@ package net.jojoaddison.repository;
 
 import java.time.Instant;
 import net.jojoaddison.domain.User;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;

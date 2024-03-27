@@ -1,15 +1,15 @@
 # This configuration is intended for development purpose, it's **your** responsibility to harden it for production
-name: patientgateway
+name: admingateway
 services:
   app:
-    image: patientgateway
+    image: admingateway
     environment:
       - _JAVA_OPTIONS=-Xmx512m -Xms256m
       - SPRING_PROFILES_ACTIVE=prod,api-docs
       - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
       - SPRING_CLOUD_CONSUL_HOST=consul
       - SPRING_CLOUD_CONSUL_PORT=8500
-      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/patientGateway?waitQueueMultiple=1000
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/adminGateway?waitQueueMultiple=1000
       - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
     ports:
       - 127.0.0.1:5505:5505

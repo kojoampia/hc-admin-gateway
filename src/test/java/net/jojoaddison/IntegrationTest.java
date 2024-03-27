@@ -15,12 +15,13 @@ import org.springframework.test.annotation.DirtiesContext;
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@SpringBootTest(classes = { PatientGatewayApp.class, AsyncSyncConfiguration.class })
+@SpringBootTest(classes = { AdminGatewayApp.class, AsyncSyncConfiguration.class })
 @EmbeddedMongo
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EmbeddedKafka
 public @interface IntegrationTest {
-    // 5s is Spring's default https://github.com/spring-projects/spring-framework/blob/main/spring-test/src/main/java/org/springframework/test/web/reactive/server/DefaultWebTestClient.java#L106
+    // 5s is Spring's default
+    // https://github.com/spring-projects/spring-framework/blob/main/spring-test/src/main/java/org/springframework/test/web/reactive/server/DefaultWebTestClient.java#L106
     String DEFAULT_TIMEOUT = "PT10S";
 
     String DEFAULT_ENTITY_TIMEOUT = "PT10S";

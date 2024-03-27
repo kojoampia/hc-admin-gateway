@@ -1,5 +1,5 @@
 # This configuration is intended for development purpose, it's **your** responsibility to harden it for production
-name: patientgateway
+name: admingateway
 services:
   consul:
     image: docker.io/bitnami/consul:1.17.0
