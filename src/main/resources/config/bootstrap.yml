@@ -5,7 +5,7 @@
 
 spring:
   application:
-    name: adminGateway
+    name: patientGateway
   profiles:
     # The commented value for `active` can be replaced with valid Spring profiles to load.
     # Otherwise, it will be filled in by maven when building the JAR file
@@ -25,18 +25,6 @@ spring:
           - git-commit=${git.commit.id.abbrev:}
           - git-branch=${git.branch:}
           - context-path=${server.servlet.context-path:}
-        metadata:
-          - profile=${spring.profiles.active}
-          - version=#project.version#
-          - git-version=${git.commit.id.describe:}
-          - git-commit=${git.commit.id.abbrev:}
-          - git-branch=${git.branch:}
-          - context-path=${server.servlet.context-path:}
+
       host: localhost
       port: 8500
-#    gateway:
-#      routes:
-#        - id: adminservice
-#          uri: http://localhost:5506
-#          predicates:
-#            - Path:/adminservice/**

@@ -2,11 +2,10 @@ package net.jojoaddison.web.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Stream;
 import net.jojoaddison.IntegrationTest;
 import net.jojoaddison.config.Constants;
 import net.jojoaddison.domain.User;
@@ -21,6 +20,8 @@ import net.jojoaddison.web.rest.vm.ManagedUserVM;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,9 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 class AccountResourceIT {
 
     static final String TEST_USER_LOGIN = "test";
+
+    @Autowired
+    private ObjectMapper om;
 
     @Autowired
     private UserRepository userRepository;
@@ -156,7 +160,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(validUser))
+            .bodyValue(om.writeValueAsBytes(validUser))
             .exchange()
             .expectStatus()
             .isCreated();
@@ -181,7 +185,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(invalidUser))
+            .bodyValue(om.writeValueAsBytes(invalidUser))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -190,24 +194,22 @@ class AccountResourceIT {
         assertThat(user).isEmpty();
     }
 
-    @Test
-    void testRegisterInvalidEmail() throws Exception {
-        ManagedUserVM invalidUser = new ManagedUserVM();
-        invalidUser.setLogin("bob");
-        invalidUser.setPassword("password");
-        invalidUser.setFirstName("Bob");
-        invalidUser.setLastName("Green");
-        invalidUser.setEmail("invalid"); // <-- invalid
-        invalidUser.setActivated(true);
-        invalidUser.setImageUrl("http://placehold.it/50x50");
-        invalidUser.setLangKey(Constants.DEFAULT_LANGUAGE);
-        invalidUser.setAuthorities(Collections.singleton(AuthoritiesConstants.USER));
+    static Stream<ManagedUserVM> invalidUsers() {
+        return Stream.of(
+            createInvalidUser("bob", "password", "Bob", "Green", "invalid", true), // <-- invalid
+            createInvalidUser("bob", "123", "Bob", "Green", "bob@example.com", true), // password with only 3 digits
+            createInvalidUser("bob", null, "Bob", "Green", "bob@example.com", true) // invalid null password
+        );
+    }
 
+    @ParameterizedTest
+    @MethodSource("invalidUsers")
+    void testRegisterInvalidUsers(ManagedUserVM invalidUser) throws Exception {
         accountWebTestClient
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(invalidUser))
+            .bodyValue(om.writeValueAsBytes(invalidUser))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -216,56 +218,25 @@ class AccountResourceIT {
         assertThat(user).isEmpty();
     }
 
-    @Test
-    void testRegisterInvalidPassword() throws Exception {
+    private static ManagedUserVM createInvalidUser(
+        String login,
+        String password,
+        String firstName,
+        String lastName,
+        String email,
+        boolean activated
+    ) {
         ManagedUserVM invalidUser = new ManagedUserVM();
-        invalidUser.setLogin("bob");
-        invalidUser.setPassword("123"); // password with only 3 digits
-        invalidUser.setFirstName("Bob");
-        invalidUser.setLastName("Green");
-        invalidUser.setEmail("bob@example.com");
-        invalidUser.setActivated(true);
+        invalidUser.setLogin(login);
+        invalidUser.setPassword(password);
+        invalidUser.setFirstName(firstName);
+        invalidUser.setLastName(lastName);
+        invalidUser.setEmail(email);
+        invalidUser.setActivated(activated);
         invalidUser.setImageUrl("http://placehold.it/50x50");
         invalidUser.setLangKey(Constants.DEFAULT_LANGUAGE);
         invalidUser.setAuthorities(Collections.singleton(AuthoritiesConstants.USER));
-
-        accountWebTestClient
-            .post()
-            .uri("/api/register")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(invalidUser))
-            .exchange()
-            .expectStatus()
-            .isBadRequest();
-
-        Optional<User> user = userRepository.findOneByLogin("bob").blockOptional();
-        assertThat(user).isEmpty();
-    }
-
-    @Test
-    void testRegisterNullPassword() throws Exception {
-        ManagedUserVM invalidUser = new ManagedUserVM();
-        invalidUser.setLogin("bob");
-        invalidUser.setPassword(null); // invalid null password
-        invalidUser.setFirstName("Bob");
-        invalidUser.setLastName("Green");
-        invalidUser.setEmail("bob@example.com");
-        invalidUser.setActivated(true);
-        invalidUser.setImageUrl("http://placehold.it/50x50");
-        invalidUser.setLangKey(Constants.DEFAULT_LANGUAGE);
-        invalidUser.setAuthorities(Collections.singleton(AuthoritiesConstants.USER));
-
-        accountWebTestClient
-            .post()
-            .uri("/api/register")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(invalidUser))
-            .exchange()
-            .expectStatus()
-            .isBadRequest();
-
-        Optional<User> user = userRepository.findOneByLogin("bob").blockOptional();
-        assertThat(user).isEmpty();
+        return invalidUser;
     }
 
     @Test
@@ -301,7 +272,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(firstUser))
+            .bodyValue(om.writeValueAsBytes(firstUser))
             .exchange()
             .expectStatus()
             .isCreated();
@@ -311,7 +282,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(secondUser))
+            .bodyValue(om.writeValueAsBytes(secondUser))
             .exchange()
             .expectStatus()
             .isCreated();
@@ -326,7 +297,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(secondUser))
+            .bodyValue(om.writeValueAsBytes(secondUser))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -350,7 +321,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(firstUser))
+            .bodyValue(om.writeValueAsBytes(firstUser))
             .exchange()
             .expectStatus()
             .isCreated();
@@ -374,7 +345,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(secondUser))
+            .bodyValue(om.writeValueAsBytes(secondUser))
             .exchange()
             .expectStatus()
             .isCreated();
@@ -402,7 +373,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(userWithUpperCaseEmail))
+            .bodyValue(om.writeValueAsBytes(userWithUpperCaseEmail))
             .exchange()
             .expectStatus()
             .isCreated();
@@ -419,7 +390,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(secondUser))
+            .bodyValue(om.writeValueAsBytes(secondUser))
             .exchange()
             .expectStatus()
             .is4xxClientError();
@@ -442,7 +413,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(validUser))
+            .bodyValue(om.writeValueAsBytes(validUser))
             .exchange()
             .expectStatus()
             .isCreated();
@@ -506,7 +477,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(userDTO))
+            .bodyValue(om.writeValueAsBytes(userDTO))
             .exchange()
             .expectStatus()
             .isOk();
@@ -547,7 +518,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(userDTO))
+            .bodyValue(om.writeValueAsBytes(userDTO))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -587,7 +558,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(userDTO))
+            .bodyValue(om.writeValueAsBytes(userDTO))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -620,7 +591,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(userDTO))
+            .bodyValue(om.writeValueAsBytes(userDTO))
             .exchange()
             .expectStatus()
             .isOk();
@@ -643,7 +614,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/change-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(new PasswordChangeDTO("1" + currentPassword, "new password")))
+            .bodyValue(om.writeValueAsBytes(new PasswordChangeDTO("1" + currentPassword, "new password")))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -667,7 +638,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/change-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(new PasswordChangeDTO(currentPassword, "new password")))
+            .bodyValue(om.writeValueAsBytes(new PasswordChangeDTO(currentPassword, "new password")))
             .exchange()
             .expectStatus()
             .isOk();
@@ -692,7 +663,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/change-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(new PasswordChangeDTO(currentPassword, newPassword)))
+            .bodyValue(om.writeValueAsBytes(new PasswordChangeDTO(currentPassword, newPassword)))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -717,7 +688,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/change-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(new PasswordChangeDTO(currentPassword, newPassword)))
+            .bodyValue(om.writeValueAsBytes(new PasswordChangeDTO(currentPassword, newPassword)))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -740,7 +711,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/change-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(new PasswordChangeDTO(currentPassword, "")))
+            .bodyValue(om.writeValueAsBytes(new PasswordChangeDTO(currentPassword, "")))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -816,7 +787,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/reset-password/finish")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(keyAndPassword))
+            .bodyValue(om.writeValueAsBytes(keyAndPassword))
             .exchange()
             .expectStatus()
             .isOk();
@@ -843,7 +814,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/reset-password/finish")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(keyAndPassword))
+            .bodyValue(om.writeValueAsBytes(keyAndPassword))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -862,7 +833,7 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/reset-password/finish")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(keyAndPassword))
+            .bodyValue(om.writeValueAsBytes(keyAndPassword))
             .exchange()
             .expectStatus()
             .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);

@@ -1,8 +1,6 @@
 package net.jojoaddison.config;
 
-import static tech.jhipster.config.logging.LoggingUtils.addContextListener;
-import static tech.jhipster.config.logging.LoggingUtils.addJsonConsoleAppender;
-import static tech.jhipster.config.logging.LoggingUtils.addLogstashTcpSocketAppender;
+import static tech.jhipster.config.logging.LoggingUtils.*;
 
 import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.core.JsonProcessingException;

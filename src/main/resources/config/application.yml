@@ -103,13 +103,13 @@ mongock:
 
 spring:
   application:
-    name: adminGateway
+    name: patientGateway
   cloud:
     consul:
       discovery:
         healthCheckPath: /management/health
-        instanceId: admingateway:${spring.application.instance-id:${random.value}}
-        service-name: admingateway
+        instanceId: patientgateway:${spring.application.instance-id:${random.value}}
+        service-name: patientgateway
       config:
         watch:
           enabled: false
@@ -143,14 +143,14 @@ spring:
       bindings:
         binding-out-0:
           content-type: text/plain
-          group: admin-gateway
+          group: patient-gateway
         kafkaConsumer-in-0:
           destination: sse-topic
           content-type: text/plain
-          group: admin-gateway
+          group: patient-gateway
         kafkaProducer-out-0:
           content-type: text/plain
-          group: admin-gateway
+          group: patient-gateway
   profiles:
     # The commented value for `active` can be replaced with valid Spring profiles to load.
     # Otherwise, it will be filled in by maven when building the JAR file
@@ -173,13 +173,13 @@ spring:
       enabled: true
   task:
     execution:
-      thread-name-prefix: admin-gateway-task-
+      thread-name-prefix: patient-gateway-task-
       pool:
         core-size: 2
         max-size: 50
         queue-capacity: 10000
     scheduling:
-      thread-name-prefix: admin-gateway-scheduling-
+      thread-name-prefix: patient-gateway-scheduling-
       pool:
         size: 2
   thymeleaf:
@@ -210,22 +210,22 @@ info:
 
 jhipster:
   clientApp:
-    name: 'adminGatewayApp'
+    name: 'patientGatewayApp'
   # By default CORS is disabled. Uncomment to enable.
-  cors:
-    allowed-origins: 'http://localhost:4200,http://localhost:9000,https://admin-dashboard.jojoaddison.net,https://*.jojoaddison.net,'
-    allowed-methods: '*'
-    allowed-headers: '*'
-    exposed-headers: 'Authorization,Link,X-Total-Count,X-${jhipster.clientApp.name}-alert,X-${jhipster.clientApp.name}-error,X-${jhipster.clientApp.name}-params'
-    allow-credentials: true
-    max-age: 1800
+  # cors:
+  #   allowed-origins: "http://localhost:8100,http://localhost:9000"
+  #   allowed-methods: "*"
+  #   allowed-headers: "*"
+  #   exposed-headers: "Authorization,Link,X-Total-Count,X-${jhipster.clientApp.name}-alert,X-${jhipster.clientApp.name}-error,X-${jhipster.clientApp.name}-params"
+  #   allow-credentials: true
+  #   max-age: 1800
   mail:
-    from: adminGateway@localhost
+    from: patientGateway@localhost
   api-docs:
     default-include-pattern: /api/**
     management-include-pattern: /management/**
-    title: admin Gateway API
-    description: admin Gateway API documentation
+    title: Patient Gateway API
+    description: Patient Gateway API documentation
     version: 0.0.1
     terms-of-service-url:
     contact-name:

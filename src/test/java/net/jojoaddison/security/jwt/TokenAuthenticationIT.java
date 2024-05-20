@@ -1,9 +1,6 @@
 package net.jojoaddison.security.jwt;
 
-import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.createExpiredToken;
-import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.createSignedInvalidJwt;
-import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.createTokenWithDifferentSignature;
-import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.createValidToken;
+import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.*;
 
 import net.jojoaddison.IntegrationTest;
 import org.junit.jupiter.api.Test;

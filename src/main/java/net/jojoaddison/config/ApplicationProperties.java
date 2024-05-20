@@ -3,7 +3,7 @@ package net.jojoaddison.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Properties specific to admin Gateway.
+ * Properties specific to Patient Gateway.
  * <p>
  * Properties are configured in the {@code application.yml} file.
  * See {@link tech.jhipster.config.JHipsterProperties} for a good example.
@@ -11,6 +11,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "application", ignoreUnknownFields = false)
 public class ApplicationProperties {
     // jhipster-needle-application-properties-property
+
     // jhipster-needle-application-properties-property-getter
+
     // jhipster-needle-application-properties-property-class
 }

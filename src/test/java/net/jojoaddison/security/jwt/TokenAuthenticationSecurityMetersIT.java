@@ -1,10 +1,6 @@
 package net.jojoaddison.security.jwt;
 
-import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.createExpiredToken;
-import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.createInvalidToken;
-import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.createSignedInvalidJwt;
-import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.createTokenWithDifferentSignature;
-import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.createValidToken;
+import static net.jojoaddison.security.jwt.JwtAuthenticationTestUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.Counter;
@@ -58,8 +54,9 @@ class TokenAuthenticationSecurityMetersIT {
 
         tryToAuthenticate(createTokenWithDifferentSignature());
 
-        assertThat(meterRegistry.get(INVALID_TOKENS_METER_EXPECTED_NAME).tag("cause", "invalid-signature").counter().count())
-            .isEqualTo(count + 1);
+        assertThat(meterRegistry.get(INVALID_TOKENS_METER_EXPECTED_NAME).tag("cause", "invalid-signature").counter().count()).isEqualTo(
+            count + 1
+        );
     }
 
     @Test

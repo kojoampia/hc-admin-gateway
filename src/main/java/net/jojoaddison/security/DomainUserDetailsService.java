@@ -1,7 +1,6 @@
 package net.jojoaddison.security;
 
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import net.jojoaddison.domain.Authority;
 import net.jojoaddison.domain.User;
 import net.jojoaddison.repository.UserRepository;

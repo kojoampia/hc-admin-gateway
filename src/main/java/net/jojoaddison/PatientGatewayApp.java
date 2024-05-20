@@ -20,24 +20,22 @@ import tech.jhipster.config.JHipsterConstants;
 
 @SpringBootApplication
 @EnableConfigurationProperties({ ApplicationProperties.class })
-public class AdminGatewayApp {
+public class PatientGatewayApp {
 
-    private static final Logger log = LoggerFactory.getLogger(AdminGatewayApp.class);
+    private static final Logger log = LoggerFactory.getLogger(PatientGatewayApp.class);
 
     private final Environment env;
 
-    public AdminGatewayApp(Environment env) {
+    public PatientGatewayApp(Environment env) {
         this.env = env;
     }
 
     /**
-     * Initializes AdminGateway.
+     * Initializes patientGateway.
      * <p>
-     * Spring profiles can be configured with a program argument
-     * --spring.profiles.active=your-active-profile
+     * Spring profiles can be configured with a program argument --spring.profiles.active=your-active-profile
      * <p>
-     * You can find more information on how profiles work with JHipster on <a href=
-     * "https://www.jhipster.tech/profiles/">https://www.jhipster.tech/profiles/</a>.
+     * You can find more information on how profiles work with JHipster on <a href="https://www.jhipster.tech/profiles/">https://www.jhipster.tech/profiles/</a>.
      */
     @PostConstruct
     public void initApplication() {
@@ -66,7 +64,7 @@ public class AdminGatewayApp {
      * @param args the command line arguments.
      */
     public static void main(String[] args) {
-        SpringApplication app = new SpringApplication(AdminGatewayApp.class);
+        SpringApplication app = new SpringApplication(PatientGatewayApp.class);
         DefaultProfileUtil.addDefaultProfile(app);
         Environment env = app.run(args).getEnvironment();
         logApplicationStartup(env);
@@ -76,8 +74,7 @@ public class AdminGatewayApp {
         String protocol = Optional.ofNullable(env.getProperty("server.ssl.key-store")).map(key -> "https").orElse("http");
         String applicationName = env.getProperty("spring.application.name");
         String serverPort = env.getProperty("server.port");
-        String contextPath = Optional
-            .ofNullable(env.getProperty("server.servlet.context-path"))
+        String contextPath = Optional.ofNullable(env.getProperty("server.servlet.context-path"))
             .filter(StringUtils::isNotBlank)
             .orElse("/");
         String hostAddress = "localhost";

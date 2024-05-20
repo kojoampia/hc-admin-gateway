@@ -27,9 +27,9 @@ import org.springframework.util.MimeTypeUtils;
 @EmbeddedKafka
 @IntegrationTest
 @ImportAutoConfiguration(TestChannelBinderConfiguration.class)
-class adminGatewayKafkaResourceIT {
+class PatientGatewayKafkaResourceIT {
 
-    private static String KAFKA_API = "/api/admin-gateway-kafka/{command}";
+    private static String KAFKA_API = "/api/patient-gateway-kafka/{command}";
 
     @Autowired
     private WebTestClient client;

@@ -2,11 +2,9 @@ package net.jojoaddison.web.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import net.jojoaddison.IntegrationTest;
 import net.jojoaddison.domain.Authority;
@@ -54,6 +52,9 @@ class UserResourceIT {
 
     private static final String DEFAULT_LANGKEY = "en";
     private static final String UPDATED_LANGKEY = "fr";
+
+    @Autowired
+    private ObjectMapper om;
 
     @Autowired
     private UserRepository userRepository;
@@ -118,7 +119,7 @@ class UserResourceIT {
             .post()
             .uri("/api/admin/users")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(user))
+            .bodyValue(om.writeValueAsBytes(user))
             .exchange()
             .expectStatus()
             .isCreated();
@@ -157,7 +158,7 @@ class UserResourceIT {
             .post()
             .uri("/api/admin/users")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(user))
+            .bodyValue(om.writeValueAsBytes(user))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -188,7 +189,7 @@ class UserResourceIT {
             .post()
             .uri("/api/admin/users")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(user))
+            .bodyValue(om.writeValueAsBytes(user))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -219,7 +220,7 @@ class UserResourceIT {
             .post()
             .uri("/api/admin/users")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(user))
+            .bodyValue(om.writeValueAsBytes(user))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -321,7 +322,7 @@ class UserResourceIT {
             .put()
             .uri("/api/admin/users")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(user))
+            .bodyValue(om.writeValueAsBytes(user))
             .exchange()
             .expectStatus()
             .isOk();
@@ -367,7 +368,7 @@ class UserResourceIT {
             .put()
             .uri("/api/admin/users")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(user))
+            .bodyValue(om.writeValueAsBytes(user))
             .exchange()
             .expectStatus()
             .isOk();
@@ -424,7 +425,7 @@ class UserResourceIT {
             .put()
             .uri("/api/admin/users")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(user))
+            .bodyValue(om.writeValueAsBytes(user))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -469,7 +470,7 @@ class UserResourceIT {
             .put()
             .uri("/api/admin/users")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(TestUtil.convertObjectToJsonBytes(user))
+            .bodyValue(om.writeValueAsBytes(user))
             .exchange()
             .expectStatus()
             .isBadRequest();
@@ -569,26 +570,6 @@ class UserResourceIT {
         assertThat(userDTO.getLastModifiedDate()).isEqualTo(user.getLastModifiedDate());
         assertThat(userDTO.getAuthorities()).containsExactly(AuthoritiesConstants.USER);
         assertThat(userDTO.toString()).isNotNull();
-    }
-
-    @Test
-    void testAuthorityEquals() {
-        Authority authorityA = new Authority();
-        assertThat(authorityA).isNotEqualTo(null).isNotEqualTo(new Object());
-        assertThat(authorityA.hashCode()).isZero();
-        assertThat(authorityA.toString()).isNotNull();
-
-        Authority authorityB = new Authority();
-        assertThat(authorityA).isEqualTo(authorityB);
-
-        authorityB.setName(AuthoritiesConstants.ADMIN);
-        assertThat(authorityA).isNotEqualTo(authorityB);
-
-        authorityA.setName(AuthoritiesConstants.USER);
-        assertThat(authorityA).isNotEqualTo(authorityB);
-
-        authorityB.setName(AuthoritiesConstants.USER);
-        assertThat(authorityA).isEqualTo(authorityB).hasSameHashCodeAs(authorityB);
     }
 
     private void assertPersistedUsers(Consumer<List<User>> userAssertion) {

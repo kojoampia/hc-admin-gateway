@@ -2,11 +2,7 @@ package net.jojoaddison.web.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -51,8 +47,11 @@ class ModifyServersOpenApiFilterTest {
         ModifyServersOpenApiFilter modifyServersOpenApiFilter = spy(new ModifyServersOpenApiFilter());
         modifyServersOpenApiFilter.filter(exchange, filterChain).subscribe();
 
-        verify(modifyServersOpenApiFilter, times(1))
-            .createModifyServersOpenApiInterceptor(sample_url, exchange.getResponse(), exchange.getResponse().bufferFactory());
+        verify(modifyServersOpenApiFilter, times(1)).createModifyServersOpenApiInterceptor(
+            sample_url,
+            exchange.getResponse(),
+            exchange.getResponse().bufferFactory()
+        );
     }
 
     @Test
@@ -68,8 +67,11 @@ class ModifyServersOpenApiFilterTest {
         ModifyServersOpenApiFilter modifyServersOpenApiFilter = spy(new ModifyServersOpenApiFilter());
         modifyServersOpenApiFilter.filter(exchange, filterChain).subscribe();
 
-        verify(modifyServersOpenApiFilter, times(0))
-            .createModifyServersOpenApiInterceptor(sample_url, exchange.getResponse(), exchange.getResponse().bufferFactory());
+        verify(modifyServersOpenApiFilter, times(0)).createModifyServersOpenApiInterceptor(
+            sample_url,
+            exchange.getResponse(),
+            exchange.getResponse().bufferFactory()
+        );
     }
 
     @Test
@@ -102,8 +104,7 @@ class ModifyServersOpenApiFilterTest {
                 interceptor
                     .getRewritedBody()
                     .contains("\"servers\":[{\"url\":\"/services/service-test/instance-test\",\"description\":\"added by global filter\"}]")
-            )
-                .isTrue();
+            ).isTrue();
         }
 
         @Test
@@ -123,8 +124,7 @@ class ModifyServersOpenApiFilterTest {
                 interceptor
                     .getRewritedBody()
                     .contains("\"servers\":[{\"url\":\"/services/service-test/instance-test\",\"description\":\"added by global filter\"}]")
-            )
-                .isTrue();
+            ).isTrue();
         }
 
         @Test

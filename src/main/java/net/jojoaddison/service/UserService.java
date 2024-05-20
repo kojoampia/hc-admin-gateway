@@ -2,8 +2,7 @@ package net.jojoaddison.service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import net.jojoaddison.config.Constants;
 import net.jojoaddison.domain.Authority;
 import net.jojoaddison.domain.User;
@@ -151,8 +150,7 @@ public class UserService {
         } else {
             user.setLangKey(userDTO.getLangKey());
         }
-        return Flux
-            .fromIterable(userDTO.getAuthorities() != null ? userDTO.getAuthorities() : new HashSet<>())
+        return Flux.fromIterable(userDTO.getAuthorities() != null ? userDTO.getAuthorities() : new HashSet<>())
             .flatMap(authorityRepository::findById)
             .doOnNext(authority -> user.getAuthorities().add(authority))
             .then(Mono.just(user))
@@ -190,8 +188,7 @@ public class UserService {
                 user.setLangKey(userDTO.getLangKey());
                 Set<Authority> managedAuthorities = user.getAuthorities();
                 managedAuthorities.clear();
-                return Flux
-                    .fromIterable(userDTO.getAuthorities())
+                return Flux.fromIterable(userDTO.getAuthorities())
                     .flatMap(authorityRepository::findById)
                     .map(managedAuthorities::add)
                     .then(Mono.just(user));
@@ -220,8 +217,7 @@ public class UserService {
      * @return a completed {@link Mono}.
      */
     public Mono<Void> updateUser(String firstName, String lastName, String email, String langKey, String imageUrl) {
-        return SecurityUtils
-            .getCurrentUserLogin()
+        return SecurityUtils.getCurrentUserLogin()
             .flatMap(userRepository::findOneByLogin)
             .flatMap(user -> {
                 user.setFirstName(firstName);
@@ -238,8 +234,7 @@ public class UserService {
     }
 
     private Mono<User> saveUser(User user) {
-        return SecurityUtils
-            .getCurrentUserLogin()
+        return SecurityUtils.getCurrentUserLogin()
             .switchIfEmpty(Mono.just(Constants.SYSTEM))
             .flatMap(login -> {
                 if (user.getCreatedBy() == null) {
@@ -251,8 +246,7 @@ public class UserService {
     }
 
     public Mono<Void> changePassword(String currentClearTextPassword, String newPassword) {
-        return SecurityUtils
-            .getCurrentUserLogin()
+        return SecurityUtils.getCurrentUserLogin()
             .flatMap(userRepository::findOneByLogin)
             .publishOn(Schedulers.boundedElastic())
             .map(user -> {
