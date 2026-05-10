@@ -31,7 +31,7 @@ public class AdminGatewayApp {
     }
 
     /**
-     * Initializes patientGateway.
+     * Initializes adminGateway.
      * <p>
      * Spring profiles can be configured with a program argument
      * --spring.profiles.active=your-active-profile

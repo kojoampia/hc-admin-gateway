@@ -103,13 +103,13 @@ mongock:
 
 spring:
   application:
-    name: patientGateway
+    name: adminGateway
   cloud:
     consul:
       discovery:
         healthCheckPath: /management/health
-        instanceId: patientgateway:${spring.application.instance-id:${random.value}}
-        service-name: patientgateway
+        instanceId: adminGateway:${spring.application.instance-id:${random.value}}
+        service-name: adminGateway
       config:
         watch:
           enabled: false
@@ -143,14 +143,14 @@ spring:
       bindings:
         binding-out-0:
           content-type: text/plain
-          group: patient-gateway
+          group: admin-gateway
         kafkaConsumer-in-0:
           destination: sse-topic
           content-type: text/plain
-          group: patient-gateway
+          group: admin-gateway
         kafkaProducer-out-0:
           content-type: text/plain
-          group: patient-gateway
+          group: admin-gateway
   profiles:
     # The commented value for `active` can be replaced with valid Spring profiles to load.
     # Otherwise, it will be filled in by maven when building the JAR file
@@ -173,13 +173,13 @@ spring:
       enabled: true
   task:
     execution:
-      thread-name-prefix: patient-gateway-task-
+      thread-name-prefix: admin-gateway-task-
       pool:
         core-size: 2
         max-size: 50
         queue-capacity: 10000
     scheduling:
-      thread-name-prefix: patient-gateway-scheduling-
+      thread-name-prefix: admin-gateway-scheduling-
       pool:
         size: 2
   thymeleaf:
@@ -210,7 +210,7 @@ info:
 
 jhipster:
   clientApp:
-    name: 'patientGatewayApp'
+    name: 'AdminGatewayApp'
   # By default CORS is disabled. Uncomment to enable.
   # cors:
   #   allowed-origins: "http://localhost:8100,http://localhost:9000"
@@ -220,7 +220,7 @@ jhipster:
   #   allow-credentials: true
   #   max-age: 1800
   mail:
-    from: patientGateway@localhost
+    from: adminGateway@localhost
   api-docs:
     default-include-pattern: /api/**
     management-include-pattern: /management/**

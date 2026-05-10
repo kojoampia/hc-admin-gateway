@@ -10,7 +10,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/patient-gateway-kafka")
+@RequestMapping("/api/admin-gateway-kafka")
 public class AdminGatewayKafkaResource {
 
     private static final String PRODUCER_BINDING_NAME = "binding-out-0";

@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+npmw
+npmw.cmd
+target
+.vscode
+.idea
+*.log
+coverage
+.tmp
+.cache

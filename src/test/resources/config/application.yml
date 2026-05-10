@@ -24,7 +24,7 @@ mongock:
 
 spring:
   application:
-    name: patientGateway
+    name: adminGateway
   autoconfigure:
     exclude:
       - org.springframework.cloud.gateway.config.GatewayMetricsAutoConfiguration
@@ -46,14 +46,14 @@ spring:
       bindings:
         binding-out-0:
           content-type: text/plain
-          group: patient-gateway
+          group: admin-gateway
         kafkaConsumer-in-0:
           destination: sse-topic
           content-type: text/plain
-          group: patient-gateway
+          group: admin-gateway
         kafkaProducer-out-0:
           content-type: text/plain
-          group: patient-gateway
+          group: admin-gateway
   jackson:
     serialization:
       write-durations-as-timestamps: false
@@ -65,13 +65,13 @@ spring:
     basename: i18n/messages
   task:
     execution:
-      thread-name-prefix: patient-gateway-task-
+      thread-name-prefix: admin-gateway-task-
       pool:
         core-size: 1
         max-size: 50
         queue-capacity: 10000
     scheduling:
-      thread-name-prefix: patient-gateway-scheduling-
+      thread-name-prefix: admin-gateway-scheduling-
       pool:
         size: 20
   thymeleaf:
@@ -88,9 +88,9 @@ server:
 # ===================================================================
 jhipster:
   clientApp:
-    name: 'patientGatewayApp'
+    name: 'AdminGatewayApp'
   mail:
-    from: patientGateway@localhost.com
+    from: adminGateway@localhost.com
     base-url: http://127.0.0.1:8080
   logging:
     # To test json console appender

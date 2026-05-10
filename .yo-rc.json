@@ -2,7 +2,7 @@
   "generator-jhipster": {
     "applicationType": "gateway",
     "authenticationType": "jwt",
-    "baseName": "patientGateway",
+    "baseName": "adminGateway",
     "buildTool": "maven",
     "cacheProvider": false,
     "creationTimestamp": 1707497116865,
