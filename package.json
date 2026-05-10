@@ -1,8 +1,8 @@
 {
-  "name": "patient-gateway",
+  "name": "admin-gateway",
   "version": "0.0.0",
   "private": true,
-  "description": "Description for patientGateway",
+  "description": "Description for adminGateway",
   "license": "UNLICENSED",
   "scripts": {
     "app:start": "./mvnw",
@@ -22,8 +22,8 @@
     "ci:e2e:server:start": "java -jar target/e2e.$npm_package_config_packaging --spring.profiles.active=e2e,$npm_package_config_default_environment -Dlogging.level.ROOT=OFF -Dlogging.level.tech.jhipster=OFF -Dlogging.level.net.jojoaddison=OFF -Dlogging.level.org.springframework=OFF -Dlogging.level.org.springframework.web=OFF -Dlogging.level.org.springframework.security=OFF --logging.level.org.springframework.web=ERROR",
     "ci:e2e:teardown": "npm run ci:e2e:teardown:docker --if-present",
     "ci:e2e:teardown:docker": "docker compose -f src/main/docker/services.yml down -v && docker ps -a",
-    "ci:server:await": "echo \"Waiting for services to start\" && npm run ci:server:await:patientgateway && echo \"Services started\"",
-    "ci:server:await:patientgateway": "wait-on -t 180000 http-get://127.0.0.1:$npm_package_config_backend_port/management/health",
+    "ci:server:await": "echo \"Waiting for services to start\" && npm run ci:server:await:adminGateway && echo \"Services started\"",
+    "ci:server:await:adminGateway": "wait-on -t 180000 http-get://127.0.0.1:$npm_package_config_backend_port/management/health",
     "docker:consul:down": "docker compose -f src/main/docker/consul.yml down -v",
     "docker:consul:up": "docker compose -f src/main/docker/consul.yml up --wait",
     "docker:db:down": "docker compose -f src/main/docker/mongodb.yml down -v",

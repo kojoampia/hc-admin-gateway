@@ -1,18 +1,18 @@
 # This configuration is intended for development purpose, it's **your** responsibility to harden it for production
-name: patient-gateway
+name: health-connect
 services:
   app:
-    image: hc-patient-gateway:0.0.1
-    container_name: hc-patient-gateway
-    hostname: patient-gateway
+    image: hc-admin-gateway:0.0.1
+    container_name: hc-admin-gateway
+    hostname: admin-gateway
     env_file: .env
     environment:
       - _JAVA_OPTIONS=-Xmx256m -Xms128m
-      - SERVER_PORT=5504
+      - SERVER_PORT=5508
       - SPRING_PROFILES_ACTIVE=dev,swagger
       - MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
       # CORS CONFIG
-      - JHIPSTER_CORS_ALLOWED_ORIGINS=http://localhost:5503,http://localhost:4200,https://patient-dashboard.jojoaddison.net,https://patient-gateway.jojoaddison.net
+      - JHIPSTER_CORS_ALLOWED_ORIGINS=http://localhost:5507,http://localhost:5506,https://admin-dashboard.jojoaddison.net,https://admin-gateway.jojoaddison.net
       # SPRING CLOUD
       - SPRING_CLOUD_CONSUL_HOST=dev_consul
       - SPRING_CLOUD_CONSUL_PORT=8500
@@ -45,7 +45,7 @@ services:
       - SPRINT_MAIL_PROPERTIES_MAIL_SMTP_CONNECTIONTIMEOUT=5000
       - MAIL_SMTP_STARTTLS_ENABLE=false
     ports:
-      - 127.0.0.1:5504:5504
+      - 127.0.0.1:5508:5508
     networks:
       - devnet
     healthcheck:
