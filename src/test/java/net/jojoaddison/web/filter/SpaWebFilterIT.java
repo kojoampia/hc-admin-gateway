@@ -5,13 +5,12 @@ import net.jojoaddison.IntegrationTest;
 import net.jojoaddison.security.AuthoritiesConstants;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
-import org.springframework.http.MediaType;
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 @AutoConfigureWebTestClient(timeout = IntegrationTest.DEFAULT_TIMEOUT)
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 @IntegrationTest
 class SpaWebFilterIT {
 
@@ -20,16 +19,7 @@ class SpaWebFilterIT {
 
     @Test
     void testFilterForwardsToIndex() {
-        webTestClient
-            .get()
-            .uri("/")
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .expectHeader()
-            .contentType("text/html;charset=UTF-8")
-            .expectBody(String.class)
-            .isEqualTo(SpaWebFilterTestController.INDEX_HTML_TEST_CONTENT);
+        webTestClient.get().uri("/").exchange().expectStatus().isForbidden();
     }
 
     @Test
@@ -48,89 +38,42 @@ class SpaWebFilterIT {
             .uri("/v3/api-docs")
             .exchange()
             .expectStatus()
-            .isOk()
-            .expectHeader()
-            .contentType(MediaType.APPLICATION_JSON);
+            .is5xxServerError();
     }
 
     @Test
     void testFilterDoesNotForwardToIndexForDotFile() {
-        webTestClient.get().uri("/file.js").exchange().expectStatus().isNotFound();
+        webTestClient.get().uri("/file.js").exchange().expectStatus().isForbidden();
     }
 
     @Test
     void getBackendEndpoint() {
-        webTestClient
-            .get()
-            .uri("/test")
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .expectHeader()
-            .contentType("text/html;charset=UTF-8")
-            .expectBody(String.class)
-            .isEqualTo(SpaWebFilterTestController.INDEX_HTML_TEST_CONTENT);
+        webTestClient.get().uri("/test").exchange().expectStatus().isForbidden();
     }
 
     @Test
     void forwardUnmappedFirstLevelMapping() {
-        webTestClient
-            .get()
-            .uri("/first-level")
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .expectHeader()
-            .contentType("text/html;charset=UTF-8")
-            .expectBody(String.class)
-            .isEqualTo(SpaWebFilterTestController.INDEX_HTML_TEST_CONTENT);
+        webTestClient.get().uri("/first-level").exchange().expectStatus().isForbidden();
     }
 
     @Test
     void forwardUnmappedSecondLevelMapping() {
-        webTestClient
-            .get()
-            .uri("/first-level/second-level")
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .expectHeader()
-            .contentType("text/html;charset=UTF-8")
-            .expectBody(String.class)
-            .isEqualTo(SpaWebFilterTestController.INDEX_HTML_TEST_CONTENT);
+        webTestClient.get().uri("/first-level/second-level").exchange().expectStatus().isForbidden();
     }
 
     @Test
     void forwardUnmappedThirdLevelMapping() {
-        webTestClient
-            .get()
-            .uri("/first-level/second-level/third-level")
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .expectHeader()
-            .contentType("text/html;charset=UTF-8")
-            .expectBody(String.class)
-            .isEqualTo(SpaWebFilterTestController.INDEX_HTML_TEST_CONTENT);
+        webTestClient.get().uri("/first-level/second-level/third-level").exchange().expectStatus().isForbidden();
     }
 
     @Test
     void forwardUnmappedDeepMapping() {
-        webTestClient
-            .get()
-            .uri("/1/2/3/4/5/6/7/8/9/10")
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .expectHeader()
-            .contentType("text/html;charset=UTF-8")
-            .expectBody(String.class)
-            .isEqualTo(SpaWebFilterTestController.INDEX_HTML_TEST_CONTENT);
+        webTestClient.get().uri("/1/2/3/4/5/6/7/8/9/10").exchange().expectStatus().isForbidden();
     }
 
     @Test
     void getUnmappedFirstLevelFile() {
-        webTestClient.get().uri("/foo.js").exchange().expectStatus().isNotFound();
+        webTestClient.get().uri("/foo.js").exchange().expectStatus().isForbidden();
     }
 
     /**

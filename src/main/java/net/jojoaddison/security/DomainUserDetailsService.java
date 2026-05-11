@@ -4,7 +4,6 @@ import java.util.*;
 import net.jojoaddison.domain.Authority;
 import net.jojoaddison.domain.User;
 import net.jojoaddison.repository.UserRepository;
-import org.hibernate.validator.internal.constraintvalidators.hv.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -32,7 +31,7 @@ public class DomainUserDetailsService implements ReactiveUserDetailsService {
     public Mono<UserDetails> findByUsername(final String login) {
         log.debug("Authenticating {}", login);
 
-        if (new EmailValidator().isValid(login, null)) {
+        if (looksLikeEmail(login)) {
             return userRepository
                 .findOneByEmailIgnoreCase(login)
                 .switchIfEmpty(Mono.error(new UsernameNotFoundException("User with email " + login + " was not found in the database")))
@@ -57,5 +56,9 @@ public class DomainUserDetailsService implements ReactiveUserDetailsService {
             .map(SimpleGrantedAuthority::new)
             .toList();
         return new org.springframework.security.core.userdetails.User(user.getLogin(), user.getPassword(), grantedAuthorities);
+    }
+
+    private boolean looksLikeEmail(String login) {
+        return login != null && login.contains("@");
     }
 }

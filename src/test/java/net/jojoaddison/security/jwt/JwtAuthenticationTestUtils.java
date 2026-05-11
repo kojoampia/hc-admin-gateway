@@ -3,6 +3,7 @@ package net.jojoaddison.security.jwt;
 import static net.jojoaddison.security.SecurityUtils.AUTHORITIES_KEY;
 import static net.jojoaddison.security.SecurityUtils.JWT_ALGORITHM;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.util.Base64;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -13,7 +14,7 @@ import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import net.jojoaddison.repository.UserRepository;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.mockito.Mockito;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.crypto.codec.Hex;
@@ -26,15 +27,24 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 public class JwtAuthenticationTestUtils {
 
     @Bean
+    ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+
+    @Bean
     private MeterRegistry meterRegistry() {
         return new SimpleMeterRegistry();
     }
 
-    @MockBean
-    private ReactiveUserDetailsService userDetailsService;
+    @Bean
+    ReactiveUserDetailsService userDetailsService() {
+        return Mockito.mock(ReactiveUserDetailsService.class);
+    }
 
-    @MockBean
-    private UserRepository userRepository;
+    @Bean
+    UserRepository userRepository() {
+        return Mockito.mock(UserRepository.class);
+    }
 
     public static String createValidToken(String jwtKey) {
         return createValidTokenForUser(jwtKey, "anonymous");

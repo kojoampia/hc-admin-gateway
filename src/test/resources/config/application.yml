@@ -27,6 +27,11 @@ spring:
     name: adminGateway
   autoconfigure:
     exclude:
+      - org.springframework.cloud.gateway.config.GatewayAutoConfiguration
+      - org.springframework.cloud.gateway.config.GatewayClassPathWarningAutoConfiguration
+      - org.springframework.cloud.gateway.config.GatewayDiscoveryClientAutoConfiguration
+      - org.springframework.cloud.gateway.config.GatewayReactiveLoadBalancerClientAutoConfiguration
+      - org.springframework.cloud.gateway.config.GatewayResilience4JCircuitBreakerAutoConfiguration
       - org.springframework.cloud.gateway.config.GatewayMetricsAutoConfiguration
   cloud:
     consul:
@@ -55,8 +60,7 @@ spring:
           content-type: text/plain
           group: admin-gateway
   jackson:
-    serialization:
-      write-durations-as-timestamps: false
+    serialization: {}
   mail:
     host: localhost
   main:

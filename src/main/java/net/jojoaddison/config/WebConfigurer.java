@@ -1,6 +1,7 @@
 package net.jojoaddison.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import net.jojoaddison.web.rest.errors.ExceptionTranslator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,5 +67,10 @@ public class WebConfigurer implements WebFluxConfigurer {
     @Order(-2) // The handler must have precedence over WebFluxResponseStatusExceptionHandler and Spring Boot's ErrorWebExceptionHandler
     public WebExceptionHandler problemExceptionHandler(ObjectMapper mapper, ExceptionTranslator problemHandling) {
         return new ReactiveWebExceptionHandler(problemHandling, mapper);
+    }
+
+    @Bean
+    ObjectMapper objectMapper() {
+        return new ObjectMapper().registerModule(new JavaTimeModule());
     }
 }

@@ -5,6 +5,7 @@ import java.util.List;
 import net.jojoaddison.security.AuthoritiesConstants;
 import net.jojoaddison.web.rest.vm.RouteVM;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.route.RouteLocator;
@@ -18,6 +19,7 @@ import reactor.core.publisher.Flux;
  */
 @RestController
 @RequestMapping("/api/gateway")
+@ConditionalOnBean(RouteLocator.class)
 public class GatewayResource {
 
     private final RouteLocator routeLocator;
