@@ -43,9 +43,8 @@ spring:
         prefer-ip-address: true
       host: localhost
       port: 8500
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/adminGateway?waitQueueMultiple=1000
+  mongodb:
+    uri: ${MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/adminGateway?waitQueueMultiple=1000}}
   mail:
     host: localhost
     port: 25

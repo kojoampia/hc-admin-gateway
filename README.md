@@ -1,4 +1,4 @@
-# adminGateway
+# HC Admin Gateway
 
 This application was generated using JHipster 8.3.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v8.3.0](https://www.jhipster.tech/documentation-archive/v8.3.0).
 
@@ -29,13 +29,26 @@ To start your application in the dev profile, run:
 ./mvnw
 ```
 
+If your local MongoDB requires authentication, use the local env + launcher workflow so you do not need to retype connection details each run:
+
+```bash
+cp .env.local.example .env.local
+./run-local.sh
+```
+
+The launcher reads `SPRING_MONGODB_URI` from `.env.local` and exports it before starting Maven. You can also pass Maven arguments through:
+
+```bash
+./run-local.sh -ntp -DskipTests spring-boot:run
+```
+
 For further instructions on how to develop with JHipster, have a look at [Using JHipster in development][].
 
 ## Building for production
 
 ### Packaging as jar
 
-To build the final jar and optimize the adminGateway application for production, run:
+To build the final jar and optimize the HC Admin Gateway application for production, run:
 
 ```
 ./mvnw -Pprod clean verify
@@ -119,6 +132,8 @@ For example, to start a mongodb database in a docker container, run:
 ```
 docker compose -f src/main/docker/mongodb.yml up -d
 ```
+
+If your local MongoDB requires authentication, set `SPRING_MONGODB_URI` in `.env.local` (see `.env.local.example`) and start with `./run-local.sh`.
 
 To stop it and remove the container, run:
 

@@ -2,7 +2,7 @@
 name: adminGateway
 services:
   consul:
-    image: docker.io/bitnami/consul:1.18.1
+    image: hashicorp/consul
     # If you want to expose these ports outside your dev PC,
     # remove the "127.0.0.1:" prefix
     ports:
@@ -19,7 +19,7 @@ services:
       - INIT_SLEEP_SECONDS=5
       - CONSUL_URL=consul
       - CONSUL_PORT=8500
-      # Uncomment to load configuration into Consul from a Git repository
-      # as configured in central-server-config/git2consul.json
-      # Also set SPRING_CLOUD_CONSUL_CONFIG_FORMAT=files on your apps
-      # - CONFIG_MODE=git
+    # Uncomment to load configuration into Consul from a Git repository
+    # as configured in central-server-config/git2consul.json
+    # Also set SPRING_CLOUD_CONSUL_CONFIG_FORMAT=files on your apps
+    # - CONFIG_MODE=git
