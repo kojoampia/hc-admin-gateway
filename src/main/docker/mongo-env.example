@@ -1,0 +1,6 @@
+# MongoDB environment variables.
+# Copy this file to mongo.env which is required in mongodb.yml
+# Make your changes to suit your needs.
+MONGO_INITDB_DATABASE=adminGateway
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=Admin123!

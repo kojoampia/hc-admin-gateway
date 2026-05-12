@@ -127,19 +127,41 @@ For more information, refer to the [Code quality page][].
 
 You can use Docker to improve your JHipster development experience. A number of docker-compose configuration are available in the [src/main/docker](src/main/docker) folder to launch required third party services.
 
-For example, to start a mongodb database in a docker container, run:
+For example, to start a MongoDB database in a docker container, run:
 
-```
+```bash
+# One-time: create mongo.env from the example template and adjust credentials
+cp src/main/docker/mongo-env.example src/main/docker/mongo.env
+
 docker compose -f src/main/docker/mongodb.yml up -d
 ```
 
-If your local MongoDB requires authentication, set `SPRING_MONGODB_URI` in `.env.local` (see `.env.local.example`) and start with `./run-local.sh`.
+`mongodb.yml` uses `mongo:8` and reads credentials from `src/main/docker/mongo.env` (gitignored).
+The example template sets `MONGO_INITDB_ROOT_USERNAME=admin`, `MONGO_INITDB_ROOT_PASSWORD=Admin123!`, and `MONGO_INITDB_DATABASE=adminGateway` — update `mongo.env` to suit your environment.
 
-To stop it and remove the container, run:
+The container port is bound to `127.0.0.1:27017` so it is not exposed outside the local machine.
 
+Because authentication is enabled, set matching credentials in `.env.local` (see `.env.local.example`) before starting the app:
+
+```bash
+./run-local.sh
 ```
+
+To stop the container and remove it, run:
+
+```bash
 docker compose -f src/main/docker/mongodb.yml down
 ```
+
+#### MongoDB cluster (sharded, optional)
+
+A sharded cluster configuration is also available for testing replication scenarios:
+
+```bash
+docker compose -f src/main/docker/mongodb-cluster.yml up -d
+```
+
+This uses a custom `MongoDB.Dockerfile` (based on `mongo:7.0.6`) with `mongodb/scripts/init_replicaset.js` to initialise the replica set automatically.
 
 You can also fully dockerize your application and all the services that it depends on.
 To achieve this, first build a docker image of your app by running:
@@ -163,6 +185,65 @@ docker compose -f src/main/docker/app.yml up -d
 When running Docker Desktop on MacOS Big Sur or later, consider enabling experimental `Use the new Virtualization framework` for better processing performance ([disk access performance is worse](https://github.com/docker/roadmap/issues/7)).
 
 For more information refer to [Using Docker and Docker-Compose][], this page also contains information on the docker-compose sub-generator (`jhipster docker-compose`), which is able to generate docker configurations for one or several JHipster applications.
+
+## Troubleshooting
+
+### MongoDB: `Command listIndexes requires authentication` on startup
+
+Mongock runs index management at startup and fails immediately when the MongoDB instance requires authentication but no credentials are supplied.
+
+**Fix:** use the local env launcher instead of `./mvnw` directly.
+
+```bash
+# One-time setup
+cp .env.local.example .env.local
+# Edit .env.local and set SPRING_MONGODB_URI to your local credentials
+./run-local.sh
+```
+
+### `.env.local` not found
+
+```
+Missing /path/to/hc-admin-gw/.env.local.
+```
+
+Run `cp .env.local.example .env.local` and update `SPRING_MONGODB_URI` with your credentials.
+
+### `SPRING_MONGODB_URI is not set`
+
+The line in `.env.local` must start with `SPRING_MONGODB_URI=` (no spaces, no quotes around the value). Example:
+
+```
+SPRING_MONGODB_URI=mongodb://admin:password@localhost:27017/adminGateway?authSource=admin&waitQueueMultiple=1000
+```
+
+### Wrong `authSource`
+
+If MongoDB reports error 13 (Unauthorized) even with credentials, verify the `authSource` parameter matches the database where the user was created. The default root user created by `MONGO_INITDB_ROOT_USERNAME` is stored in the `admin` database, so use `authSource=admin`.
+
+### Consul not reachable
+
+```
+Application run failed … Connection refused … localhost:8500
+```
+
+Start Consul before launching the app:
+
+```bash
+docker compose -f src/main/docker/consul.yml up -d
+# or
+npm run docker:consul:up
+```
+
+### All dependent services at once
+
+```bash
+npm run services:up
+```
+
+This starts Consul, MongoDB, and Kafka together.
+
+---
 
 ## Continuous Integration (optional)
 
