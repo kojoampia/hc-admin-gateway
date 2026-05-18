@@ -29,6 +29,11 @@ To start your application in the dev profile, run:
 ./mvnw
 ```
 
+The dev profile bootstraps two local test accounts on startup when they are missing:
+
+- `admin` / `admin` with `ROLE_ADMIN` and `ROLE_USER`
+- `user` / `user` with `ROLE_USER`
+
 If your local MongoDB requires authentication, use the local env + launcher workflow so you do not need to retype connection details each run:
 
 ```bash
