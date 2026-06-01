@@ -23,6 +23,7 @@ public class InitialSetupMigration {
     public void changeSet() {
         template.save(createUserAuthority());
         template.save(createAdminAuthority());
+        template.save(createOperatorAuthority());
     }
 
     @RollbackExecution
@@ -42,5 +43,10 @@ public class InitialSetupMigration {
     private Authority createUserAuthority() {
         Authority userAuthority = createAuthority(AuthoritiesConstants.USER);
         return userAuthority;
+    }
+
+    private Authority createOperatorAuthority() {
+        Authority operatorAuthority = createAuthority(AuthoritiesConstants.OPERATOR);
+        return operatorAuthority;
     }
 }

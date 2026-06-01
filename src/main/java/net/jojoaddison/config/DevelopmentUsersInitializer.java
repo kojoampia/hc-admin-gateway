@@ -35,6 +35,15 @@ public class DevelopmentUsersInitializer implements ApplicationRunner {
 
     private static final DevelopmentUser STANDARD_USER = new DevelopmentUser("user-2", "user", "user", "user@localhost", "User", "User");
 
+    private static final DevelopmentUser OPERATOR_USER = new DevelopmentUser(
+        "user-3",
+        "operator",
+        "operator",
+        "operator@localhost",
+        "Operator",
+        "Operator"
+    );
+
     private final MongoTemplate template;
     private final PasswordEncoder passwordEncoder;
 
@@ -47,9 +56,10 @@ public class DevelopmentUsersInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         Authority userAuthority = ensureAuthority(AuthoritiesConstants.USER);
         Authority adminAuthority = ensureAuthority(AuthoritiesConstants.ADMIN);
-
+        Authority operatorAuthority = ensureAuthority(AuthoritiesConstants.OPERATOR);
         createUserIfMissing(STANDARD_USER, Set.of(userAuthority));
         createUserIfMissing(ADMIN_USER, Set.of(adminAuthority, userAuthority));
+        createUserIfMissing(OPERATOR_USER, Set.of(operatorAuthority, userAuthority));
     }
 
     private Authority ensureAuthority(String authorityName) {
