@@ -1,0 +1,60 @@
+{
+  "dev": [
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "login": "admin",
+      "email": "admin@localhost",
+      "firstName": "Admin",
+      "lastName": "User",
+      "activated": true,
+      "authorities": ["ROLE_ADMIN", "ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12",
+      "login": "operator",
+      "email": "operator@localhost",
+      "firstName": "Operator",
+      "lastName": "User",
+      "activated": true,
+      "authorities": ["ROLE_OPERATOR", "ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13",
+      "login": "user",
+      "email": "user@localhost",
+      "firstName": "Normal",
+      "lastName": "User",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    }
+  ],
+  "test": [
+    {
+      "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b11",
+      "login": "deactivated",
+      "email": "deactivated@localhost",
+      "firstName": "Deactivated",
+      "lastName": "User",
+      "activated": false,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b12",
+      "login": "noauth",
+      "email": "noauth@localhost",
+      "firstName": "No",
+      "lastName": "Auth",
+      "activated": true,
+      "authorities": []
+    },
+    {
+      "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b13",
+      "login": "malformed",
+      "email": "malformed@localhost",
+      "firstName": "",
+      "lastName": null,
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    }
+  ]
+}

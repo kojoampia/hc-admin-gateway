@@ -1,16 +1,20 @@
 package net.jojoaddison.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import net.jojoaddison.domain.Authority;
 import net.jojoaddison.domain.User;
-import net.jojoaddison.security.AuthoritiesConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -19,47 +23,50 @@ import org.springframework.stereotype.Component;
 import tech.jhipster.config.JHipsterConstants;
 
 @Component
-@Profile(JHipsterConstants.SPRING_PROFILE_DEVELOPMENT)
+@Profile({ JHipsterConstants.SPRING_PROFILE_DEVELOPMENT, JHipsterConstants.SPRING_PROFILE_TEST })
 public class DevelopmentUsersInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DevelopmentUsersInitializer.class);
 
-    private static final DevelopmentUser ADMIN_USER = new DevelopmentUser(
-        "user-1",
-        "admin",
-        "admin",
-        "admin@localhost",
-        "Admin",
-        "Administrator"
-    );
-
-    private static final DevelopmentUser STANDARD_USER = new DevelopmentUser("user-2", "user", "user", "user@localhost", "User", "User");
-
-    private static final DevelopmentUser OPERATOR_USER = new DevelopmentUser(
-        "user-3",
-        "operator",
-        "operator",
-        "operator@localhost",
-        "Operator",
-        "Operator"
-    );
-
     private final MongoTemplate template;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper;
+    private final ResourceLoader resourceLoader;
+    private final Environment env;
 
-    public DevelopmentUsersInitializer(MongoTemplate template, PasswordEncoder passwordEncoder) {
+    public DevelopmentUsersInitializer(
+        MongoTemplate template,
+        PasswordEncoder passwordEncoder,
+        ObjectMapper objectMapper,
+        ResourceLoader resourceLoader,
+        Environment env
+    ) {
         this.template = template;
         this.passwordEncoder = passwordEncoder;
+        this.objectMapper = objectMapper;
+        this.resourceLoader = resourceLoader;
+        this.env = env;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        Authority userAuthority = ensureAuthority(AuthoritiesConstants.USER);
-        Authority adminAuthority = ensureAuthority(AuthoritiesConstants.ADMIN);
-        Authority operatorAuthority = ensureAuthority(AuthoritiesConstants.OPERATOR);
-        createUserIfMissing(STANDARD_USER, Set.of(userAuthority));
-        createUserIfMissing(ADMIN_USER, Set.of(adminAuthority, userAuthority));
-        createUserIfMissing(OPERATOR_USER, Set.of(operatorAuthority, userAuthority));
+        log.info("Initializing development/test users from hc-admin-gw-data.json");
+        try {
+            DevelopmentUsersData developmentUsersData = objectMapper.readValue(
+                resourceLoader.getResource("classpath:hc-admin-gw-data.json").getInputStream(),
+                DevelopmentUsersData.class
+            );
+
+            if (env.acceptsProfiles(org.springframework.core.env.Profiles.of(JHipsterConstants.SPRING_PROFILE_DEVELOPMENT))) {
+                developmentUsersData.dev().forEach(this::createUserFromJson);
+            }
+
+            if (env.acceptsProfiles(org.springframework.core.env.Profiles.of(JHipsterConstants.SPRING_PROFILE_TEST))) {
+                developmentUsersData.test().forEach(this::createUserFromJson);
+            }
+        } catch (IOException e) {
+            log.error("Failed to load development/test users from hc-admin-gw-data.json", e);
+        }
     }
 
     private Authority ensureAuthority(String authorityName) {
@@ -73,28 +80,41 @@ public class DevelopmentUsersInitializer implements ApplicationRunner {
         return template.save(newAuthority);
     }
 
-    private void createUserIfMissing(DevelopmentUser developmentUser, Set<Authority> authorities) {
-        Query loginQuery = Query.query(Criteria.where("login").is(developmentUser.login()));
+    private void createUserFromJson(DevelopmentUserJson developmentUserJson) {
+        Query loginQuery = Query.query(Criteria.where("login").is(developmentUserJson.login()));
         if (template.exists(loginQuery, User.class)) {
             return;
         }
 
         User user = new User();
-        user.setId(developmentUser.id());
-        user.setLogin(developmentUser.login());
-        user.setPassword(passwordEncoder.encode(developmentUser.password()));
-        user.setFirstName(developmentUser.firstName());
-        user.setLastName(developmentUser.lastName());
-        user.setEmail(developmentUser.email());
-        user.setActivated(true);
+        user.setId(developmentUserJson.id());
+        user.setLogin(developmentUserJson.login());
+        user.setPassword(passwordEncoder.encode(developmentUserJson.login())); // Use login as default password
+        user.setFirstName(developmentUserJson.firstName());
+        user.setLastName(developmentUserJson.lastName());
+        user.setEmail(developmentUserJson.email());
+        user.setActivated(developmentUserJson.activated());
         user.setLangKey(Constants.DEFAULT_LANGUAGE);
         user.setCreatedBy(Constants.SYSTEM);
         user.setCreatedDate(Instant.now());
-        user.setAuthorities(new HashSet<>(authorities));
+
+        Set<Authority> authorities = new HashSet<>();
+        developmentUserJson.authorities().forEach(authorityName -> authorities.add(ensureAuthority(authorityName)));
+        user.setAuthorities(authorities);
 
         template.save(user);
-        log.info("Created development user '{}'", developmentUser.login());
+        log.info("Created development/test user '{}'", developmentUserJson.login());
     }
 
-    private record DevelopmentUser(String id, String login, String password, String email, String firstName, String lastName) {}
+    private record DevelopmentUserJson(
+        String id,
+        String login,
+        String email,
+        String firstName,
+        String lastName,
+        Boolean activated,
+        List<String> authorities
+    ) {}
+
+    private record DevelopmentUsersData(List<DevelopmentUserJson> dev, List<DevelopmentUserJson> test) {}
 }

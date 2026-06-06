@@ -24,7 +24,7 @@ class DevelopmentUsersInitializerTest {
 
     private final MongoTemplate template = mock(MongoTemplate.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-    private final DevelopmentUsersInitializer initializer = new DevelopmentUsersInitializer(template, passwordEncoder);
+    private final DevelopmentUsersInitializer initializer = new DevelopmentUsersInitializer(template, passwordEncoder, null, null, null);
 
     @Test
     void shouldCreateDevelopmentUsersWhenMissing() throws Exception {
