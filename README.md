@@ -1,10 +1,38 @@
 # HC Admin Gateway
 
+The edge service of the Health Connect **admin** stack, and the only component in it that owns users, authorities, and authentication. Built on Spring Cloud Gateway (reactive/WebFlux).
+
 This application was generated using JHipster 8.3.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v8.3.0](https://www.jhipster.tech/documentation-archive/v8.3.0).
 
 This is a "gateway" application intended to be part of a microservice architecture, please refer to the [Doing microservices with JHipster][] page of the documentation for more information.
 
 This application is configured for Service Discovery and Configuration with Consul. On launch, it will refuse to start if it is not able to connect to Consul at [http://localhost:8500](http://localhost:8500). For more information, read our documentation on [Service Discovery and Configuration with Consul][].
+
+## At a glance
+
+|                    |                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| Java / Spring Boot | 26 / 4.0.6 (enforcer accepts JDK 17+, Maven >= 3.2.5)                                   |
+| Stack              | Spring Cloud Gateway, WebFlux — **reactive**, no blocking calls                         |
+| Database           | MongoDB, default db `adminGateway`; Mongock scans `net.jojoaddison.config.dbmigrations` |
+| Ports              | **5504** (dev profile), **5503** (prod profile)                                         |
+| Discovery          | Consul at `localhost:8500`; registers as `adminGateway`                                 |
+| Messaging          | Kafka via Spring Cloud Stream (`kafkaConsumer` on `sse-topic`)                          |
+| Package root       | `net.jojoaddison`                                                                       |
+
+### Place in the stack
+
+```
+hc-admin-dashboard (Angular, :4200)
+  └─ hc-admin-gateway (:5504 dev / :5503 prod)   ← this repo
+       └─ hc-admin-service (:5507 dev / :8080 prod)
+```
+
+### Routing
+
+`spring.cloud.gateway.discovery.locator` is enabled with `lower-case-service-id: true`, so every Consul-registered service is automatically published at `/services/{serviceId-lowercased}/**` with the prefix rewritten away. `default-filters: [JWTRelay]` applies `JWTRelayGatewayFilterFactory` to every route, validating the bearer token and relaying it downstream. `application-dev.yml` adds one static route: `/services/admin-service/**` → `http://localhost:5507` with `StripPrefix=2`.
+
+**Known routing mismatch:** `hc-admin-service` registers as `hcadminservice`, the static dev route is `/services/admin-service/**`, and the Angular dashboard calls `/services/hc-admin-ms/...`. None of the three agree — check this first when admin entity calls 404 through the gateway.
 
 ## Project Structure
 
@@ -29,10 +57,17 @@ To start your application in the dev profile, run:
 ./mvnw
 ```
 
-The dev profile bootstraps two local test accounts on startup when they are missing:
+### Seeded accounts
 
-- `admin` / `admin` with `ROLE_ADMIN` and `ROLE_USER`
-- `user` / `user` with `ROLE_USER`
+`config/dbmigrations/InitialSetupMigration` runs on **every** startup, in all profiles, and seeds three accounts. Passwords are derived in code from the login (capitalised login + `@` + ascending digits), not equal to the login:
+
+| Login      | Password           | Authorities               |
+| ---------- | ------------------ | ------------------------- |
+| `admin`    | `Admin@01234`      | `ROLE_ADMIN`, `ROLE_USER` |
+| `user`     | `User@0123`        | `ROLE_USER`               |
+| `operator` | `Operator@1234567` | `ROLE_OPERATOR`           |
+
+> **Warning — this is destructive.** `InitialSetupMigration`'s constructor calls `cleanup()`, which **drops the `Authority` and `User` collections on every application start**. Any account you create locally is deleted on the next restart. It is also an `ApplicationRunner`, not a Mongock `@ChangeUnit`, so Mongock's changelog does not guard it from re-running. The seeding code additionally logs the generated passwords at INFO level.
 
 If your local MongoDB requires authentication, use the local env + launcher workflow so you do not need to retype connection details each run:
 
@@ -92,6 +127,22 @@ To launch your application's tests, run:
 ```
 ./mvnw verify
 ```
+
+Run a single test class or method:
+
+```bash
+./mvnw -q -Dtest=UserResourceIT test
+./mvnw -q -Dtest=UserResourceIT#createUser test
+```
+
+Conventions:
+
+- Unit tests are `*Test.java`; integration tests are `*IT.java`. `SpringBootTestClassOrderer` runs plain unit tests before context-booting ones.
+- Testcontainers are wired through `src/test/resources/META-INF/spring.factories`: MongoDB is always provisioned, Kafka only for classes annotated `@EmbeddedKafka`. Docker must be running.
+- `TechnicalStructureTest` enforces package-layer boundaries with ArchUnit — a new class in the wrong slice fails the build.
+- `JHipsterBlockHoundIntegration` detects blocking calls on reactive threads.
+
+> **Known breakage:** `src/test/java/net/jojoaddison/config/DevelopmentUsersInitializerTest.java` instantiates `net.jojoaddison.config.DevelopmentUsersInitializer`, which does not exist under `src/main`. Test compilation fails until that class is restored or the test is removed.
 
 ## Others
 
@@ -209,7 +260,7 @@ cp .env.local.example .env.local
 ### `.env.local` not found
 
 ```
-Missing /path/to/hc-admin-gw/.env.local.
+Missing /path/to/hc-admin-gateway/.env.local.
 ```
 
 Run `cp .env.local.example .env.local` and update `SPRING_MONGODB_URI` with your credentials.
@@ -247,6 +298,24 @@ npm run services:up
 ```
 
 This starts Consul, MongoDB, and Kafka together.
+
+### Login fails with credentials that worked before
+
+`InitialSetupMigration` drops the `User` and `Authority` collections on every startup and re-seeds the three built-in accounts (see [Seeded accounts](#seeded-accounts)). Any user you created through the API is gone after a restart. Note also that the seeded passwords are **not** the same as the logins — use `Admin@01234`, `User@0123`, `Operator@1234567`.
+
+### Requests to a microservice return 404 through the gateway
+
+Check which path the caller is using against what the gateway actually publishes:
+
+- discovery locator serves `/services/{consul-service-name-lowercased}/**` — for `hc-admin-service` that is `/services/hcadminservice/**`
+- the dev profile also defines a static `/services/admin-service/**` route
+- the Angular dashboard currently calls `/services/hc-admin-ms/...`, which matches neither
+
+Confirm the service is registered in Consul at http://localhost:8500 before assuming a gateway bug.
+
+### Test compilation fails on `DevelopmentUsersInitializer`
+
+`src/test/java/net/jojoaddison/config/DevelopmentUsersInitializerTest.java` references a class that no longer exists in `src/main`. Restore the class or delete the test.
 
 ---
 
