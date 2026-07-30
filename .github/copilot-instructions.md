@@ -33,7 +33,7 @@
 
 - Development run:
   - `./mvnw`
-  - or `npm run app:start`
+  - or `npm run app:start` (this repo does have a `pom.xml`, unlike the dashboard)
 - Build for production:
   - `./mvnw -Pprod clean verify`
   - `./mvnw -Pprod,war clean verify`
