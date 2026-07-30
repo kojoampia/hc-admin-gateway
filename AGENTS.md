@@ -44,6 +44,8 @@ There is **no frontend and no JPA/SQL layer in this project**. The Angular SPA l
 
   Change accounts by editing the JSON, not the Java. The ids are a cross-service contract matching the `managedBy` / `createdBy` references in `hc-admin-service`'s seed data — **do not change them without updating both**.
 
+  The operator deliberately carries `ROLE_USER` alongside `ROLE_OPERATOR`, matching the blueprint and the JHipster convention that every account has `ROLE_USER` as a baseline. It is not a leftover: it was reviewed and kept. Note that no matcher in `SecurityConfiguration` gates on `ROLE_USER` — the rules are `permitAll()`, `hasAuthority(ROLE_ADMIN)`, or plain `authenticated()` — so this widens nothing at the gateway; it matters only where `ROLE_USER` is tested for directly.
+
   Three things this class used to do and must not do again: drop the `User` and `Authority` collections on startup, log seed passwords, and derive credentials in code. `InitialSetupMigrationTest` guards all three.
 
 - **Production bootstrap is separate and credential-free.** `config/AdminBootstrapInitializer` runs in every profile but is inert unless `gateway.admin.password` is set (env: `GATEWAY_ADMIN_PASSWORD`), and skips if the account already exists. This is what gives a fresh production database a way in; the dev/test seed credentials must never reach production. `gateway.admin.login` and `gateway.admin.email` are optional overrides. Never add a default value for the password.

@@ -124,6 +124,11 @@ class InitialSetupMigrationTest {
             );
     }
 
+    /**
+     * The operator carrying {@code ROLE_USER} alongside {@code ROLE_OPERATOR} is deliberate: it
+     * matches the blueprint and the convention that every account holds {@code ROLE_USER} as a
+     * baseline. An earlier hardcoded path granted only {@code ROLE_OPERATOR}. Do not "tidy" it away.
+     */
     @Test
     void shouldAssignAuthoritiesDeclaredInTheJson() {
         activateProfiles("dev");

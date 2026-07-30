@@ -67,7 +67,11 @@ Each user carries `id`, `login`, `email`, `firstName`, `lastName`, `activated`, 
 
 The file's original passwords (`!!Admin1234$` and friends) were replaced with the values already in circulation, so adopting it as the source of truth changed no working credential. Fixtures declare no password and fall back to their login.
 
-The operator now gets `ROLE_USER` in addition to `ROLE_OPERATOR`, per the blueprint — the previous hardcoded path granted only `ROLE_OPERATOR`.
+The operator holds `ROLE_USER` in addition to `ROLE_OPERATOR`, per the blueprint. The earlier hardcoded path granted only `ROLE_OPERATOR`, so adopting the file widened it. **This was reviewed and kept deliberately**: it matches the blueprint, and it matches the JHipster convention that every account carries `ROLE_USER` as a baseline — `UserService` assigns exactly that to newly registered users.
+
+It does not change what an operator can reach today. No matcher in `SecurityConfiguration` gates on `ROLE_USER`: the rules are `permitAll()`, `hasAuthority(ROLE_ADMIN)`, or plain `authenticated()`, and the last is satisfied by any logged-in principal regardless of role. The practical effect is that the operator is now indistinguishable from a regular user wherever `ROLE_USER` is tested for, which is the intended semantics.
+
+`InitialSetupMigrationTest.shouldAssignAuthoritiesDeclaredInTheJson` pins the authority set, so narrowing the operator back to `ROLE_OPERATOR` alone fails the build until the decision is revisited explicitly.
 
 ### Fixed
 
