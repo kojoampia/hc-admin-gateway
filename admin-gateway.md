@@ -94,11 +94,11 @@ It matches the Consul `service-name` of `hc-admin-service`, and therefore the ro
 
 Three spellings are currently in circulation and only one resolves:
 
-| Where                                            | Value                         | Resolves?                                          |
-| ------------------------------------------------ | ----------------------------- | -------------------------------------------------- |
-| Consul registration / discovery locator          | `/services/hcadminservice/**` | ✅ yes                                             |
-| Gateway static dev route (`application-dev.yml`) | `/services/admin-service/**`  | ⚠ dev profile only, hardcoded to `localhost:5507` |
-| Angular dashboard entity services                | `/services/hc-admin-ms/...`   | ❌ nothing serves this                             |
+| Where                                            | Value                          | Resolves?                                          |
+| ------------------------------------------------ | ------------------------------ | -------------------------------------------------- |
+| Consul registration / discovery locator          | `/services/hcadminservice/**`  | ✅ yes                                             |
+| Gateway static dev route (`application-dev.yml`) | `/services/admin-service/**`   | ⚠ dev profile only, hardcoded to `localhost:5507` |
+| Angular dashboard entity services                | `/services/hcadminservice/...` | ❌ nothing serves this                             |
 
 When reconciling the mismatch, **this document has the right name**. The fix belongs in the frontend's `getEndpointFor(...)` calls.
 
@@ -133,6 +133,6 @@ export class FacilityService {
 }
 ```
 
-In practice the dashboard builds this URL through `ApplicationConfigService.getEndpointFor('api/facilities', 'hcadminservice')` rather than hardcoding it — that indirection is the convention there, and the second argument is the value that must be corrected from `'hc-admin-ms'`.
+In practice the dashboard builds this URL through `ApplicationConfigService.getEndpointFor('api/facilities', 'hcadminservice')` rather than hardcoding it — that indirection is the convention there, and the second argument is the value that must be corrected from `'hcadminservice'`.
 
 The blueprint's broader intent — eliminate hardcoded mock data from frontend state stores and fetch through `HttpClient` — is tracked in the dashboard's own consolidated `admin-web.md`.

@@ -28,7 +28,7 @@ There is **no frontend and no JPA/SQL layer in this project**. The Angular SPA l
   - predicate: `/services/{serviceId.toLowerCase()}/**`
   - filter: `RewritePath` strips the `/services/{serviceId}` prefix
   - `default-filters: [JWTRelay]` applies `JWTRelayGatewayFilterFactory` to every route, which validates the incoming bearer token with `ReactiveJwtDecoder` and relays it downstream.
-  - `application-dev.yml` additionally declares one **static** route, `admin-service-route`: `Path=/services/admin-service/**` + `StripPrefix=2` → `http://localhost:5507`. See "Known routing mismatch" below.
+  - `application-dev.yml` additionally declares one **static** route, `admin-service-route`: `Path=/services/admin-service/**` + `StripPrefix=2` → `http://localhost:5507`. That is a dev-profile convenience for reaching a service running outside Docker; production routing is entirely discovery-driven.
 - **Authentication and user management live here.** `AuthenticateController` issues JWTs, `AccountResource` / `UserResource` / `PublicUserResource` / `AuthorityResource` manage accounts, and `DomainUserDetailsService` loads users. Downstream services (`hc-admin-service`) are configured with `skipUserManagement` and act purely as OAuth2 resource servers trusting the relayed JWT.
 - **Seeding is additive and JSON-driven.** `config/dbmigrations/InitialSetupMigration` is an `ApplicationRunner` annotated `@Profile({dev, test})` — it sits in the Mongock scan package but is not a `@ChangeUnit`, so do not rely on it as a migration mechanism. It reads `src/main/resources/hc-admin-gw-data.json`, the **single source of truth** for local accounts, and creates each only when no user with that login exists.
 
@@ -59,17 +59,23 @@ There is **no frontend and no JPA/SQL layer in this project**. The Angular SPA l
 - **Configuration is layered**: `bootstrap.yml` / `bootstrap-prod.yml` handle Consul discovery + config bootstrap; `application.yml` holds shared settings; `application-dev.yml` and `application-prod.yml` set the profile-specific port, Mongo URI, and route config. `application-tls.yml` enables the PKCS12 keystore in `config/tls/`.
 - `web/filter/ModifyServersOpenApiFilter` rewrites the `servers` block of aggregated downstream OpenAPI docs so Swagger UI targets the gateway rather than the microservice directly.
 
-### Known routing mismatch
+### Service naming
 
-Three different identifiers refer to the same downstream service and they do not agree:
+All three identifiers for the downstream service now agree on **`hcadminservice`**:
 
-| Where                                                         | Value                        |
-| ------------------------------------------------------------- | ---------------------------- |
-| Consul registration (`application.yml` of `hc-admin-service`) | `hcadminservice`             |
-| Gateway dev static route predicate                            | `/services/admin-service/**` |
-| Angular entity services (`hc-admin-dashboard`)                | `services/hc-admin-ms/...`   |
+| Where                                                         | Value                                   |
+| ------------------------------------------------------------- | --------------------------------------- |
+| Consul registration (`application.yml` of `hc-admin-service`) | `hcadminservice`                        |
+| Gateway discovery locator (`lower-case-service-id: true`)     | publishes `/services/hcadminservice/**` |
+| Angular entity services (`hc-admin-dashboard`)                | `/services/hcadminservice/...`          |
 
-Discovery-based routing therefore serves `/services/hcadminservice/**`, the static dev route serves `/services/admin-service/**`, and the frontend calls neither. If admin entity calls 404 through the gateway, this is the cause — check it before looking elsewhere.
+They did not always: the dashboard called `/services/hc-admin-ms/...`, which nothing served, so every
+entity screen 404ed while login still worked.
+
+The `application-dev.yml` static route `/services/admin-service/**` → `localhost:5507` is a
+dev-profile convenience for reaching the service outside Docker, not a second contract. If a
+`/services/...` call 404s, check the Consul catalogue first — an unregistered service is a 404, not
+an error.
 
 ## Code Quality and Style
 
@@ -134,7 +140,7 @@ If your local MongoDB requires authentication, `cp .env.local.example .env.local
 
 ## Technology Stack
 
-- **Java 26** (`java.version` in `pom.xml`; enforcer accepts JDK 17+)
+- **Java 25** (`java.version` in `pom.xml`; enforcer accepts JDK 17+)
 - **Spring Boot 4.0.6**, Spring WebFlux, Spring Cloud Gateway, Spring Cloud Consul
 - **Spring Security** OAuth2 resource server + JWT
 - **MongoDB** (reactive and blocking drivers), **Mongock** for migrations

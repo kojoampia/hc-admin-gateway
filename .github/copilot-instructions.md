@@ -25,9 +25,9 @@
 - Downstream routing is discovery-driven: `spring.cloud.gateway.discovery.locator` publishes `/services/{serviceId-lowercased}/**` per Consul-registered service, and `default-filters: [JWTRelay]` relays the bearer token. `application-dev.yml` adds one static route, `/services/admin-service/**` → `http://localhost:5507`.
 - Authorization rules live in `config/SecurityConfiguration`; see `AGENTS.md` for the full public/admin/authenticated matcher breakdown.
 
-### Known routing mismatch
+### Service naming
 
-`hc-admin-service` registers in Consul as `hcadminservice`, the gateway dev static route matches `/services/admin-service/**`, and the Angular dashboard calls `services/hc-admin-ms/...`. None of the three agree — check this first when admin entity calls 404 through the gateway.
+`hc-admin-service` registers in Consul as `hcadminservice`, so the discovery locator publishes `/services/hcadminservice/**` and the Angular dashboard calls exactly that. The static `/services/admin-service/**` dev route is a convenience, not a second contract. If a `/services/...` call 404s, check the Consul catalogue first.
 
 ## Build And Test
 

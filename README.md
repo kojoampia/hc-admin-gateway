@@ -12,7 +12,7 @@ This application is configured for Service Discovery and Configuration with Cons
 
 |                    |                                                                                         |
 | ------------------ | --------------------------------------------------------------------------------------- |
-| Java / Spring Boot | 26 / 4.0.6 (enforcer accepts JDK 17+, Maven >= 3.2.5)                                   |
+| Java / Spring Boot | 25 / 4.0.6 (enforcer accepts JDK 17+, Maven >= 3.2.5)                                   |
 | Stack              | Spring Cloud Gateway, WebFlux — **reactive**, no blocking calls                         |
 | Database           | MongoDB, default db `adminGateway`; Mongock scans `net.jojoaddison.config.dbmigrations` |
 | Ports              | **5504** (dev profile), **5503** (prod profile)                                         |
@@ -32,7 +32,7 @@ hc-admin-dashboard (Angular, :4200)
 
 `spring.cloud.gateway.discovery.locator` is enabled with `lower-case-service-id: true`, so every Consul-registered service is automatically published at `/services/{serviceId-lowercased}/**` with the prefix rewritten away. `default-filters: [JWTRelay]` applies `JWTRelayGatewayFilterFactory` to every route, validating the bearer token and relaying it downstream. `application-dev.yml` adds one static route: `/services/admin-service/**` → `http://localhost:5507` with `StripPrefix=2`.
 
-**Known routing mismatch:** `hc-admin-service` registers as `hcadminservice`, the static dev route is `/services/admin-service/**`, and the Angular dashboard calls `/services/hc-admin-ms/...`. None of the three agree — check this first when admin entity calls 404 through the gateway.
+**Service naming:** `hc-admin-service` registers as `hcadminservice`, so the discovery locator publishes `/services/hcadminservice/**` — which is what the Angular dashboard calls. The static `/services/admin-service/**` dev route is a convenience for running the service outside Docker, not a second contract.
 
 ## Project Structure
 
@@ -335,7 +335,7 @@ Check which path the caller is using against what the gateway actually publishes
 
 - discovery locator serves `/services/{consul-service-name-lowercased}/**` — for `hc-admin-service` that is `/services/hcadminservice/**`
 - the dev profile also defines a static `/services/admin-service/**` route
-- the Angular dashboard currently calls `/services/hc-admin-ms/...`, which matches neither
+- the Angular dashboard currently calls `/services/hcadminservice/...`, which matches neither
 
 Confirm the service is registered in Consul at http://localhost:8500 before assuming a gateway bug.
 
