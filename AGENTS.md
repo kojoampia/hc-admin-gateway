@@ -18,7 +18,7 @@ There is **no frontend and no JPA/SQL layer in this project**. The Angular SPA l
 | [`admin-gateway.md`](admin-gateway.md)                               | **Design plans and blueprints** — the consolidated data blueprints for this gateway |
 | [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | Condensed conventions for Copilot                                                   |
 
-`admin-gateway.md` replaced `hc-admin-gw-data.md` and `hc-admin-ms-data.md`. **Its contents are historical — do not execute them as prompts.** It is worth reading for two things: the [blueprint-vs-reality comparison](admin-gateway.md#blueprint-vs-reality) of the seeded user accounts, and the [routing contract](admin-gateway.md#2-microservice-routing-contract) that establishes `/services/hcadminservice/...` as the canonical downstream path.
+`admin-gateway.md` replaced `hc-admin-gw-data.md` and `hc-admin-ms-data.md`. **Its contents are historical — do not execute them as prompts.** It is worth reading for two things: the [blueprint-vs-delivered comparison](admin-gateway.md#the-blueprint-is-now-live) of the seeded user accounts, and the [routing contract](admin-gateway.md#2-microservice-routing-contract) that establishes `/services/hcadminservice/...` as the canonical downstream path.
 
 ## Architecture and Design
 
@@ -30,7 +30,24 @@ There is **no frontend and no JPA/SQL layer in this project**. The Angular SPA l
   - `default-filters: [JWTRelay]` applies `JWTRelayGatewayFilterFactory` to every route, which validates the incoming bearer token with `ReactiveJwtDecoder` and relays it downstream.
   - `application-dev.yml` additionally declares one **static** route, `admin-service-route`: `Path=/services/admin-service/**` + `StripPrefix=2` → `http://localhost:5507`. See "Known routing mismatch" below.
 - **Authentication and user management live here.** `AuthenticateController` issues JWTs, `AccountResource` / `UserResource` / `PublicUserResource` / `AuthorityResource` manage accounts, and `DomainUserDetailsService` loads users. Downstream services (`hc-admin-service`) are configured with `skipUserManagement` and act purely as OAuth2 resource servers trusting the relayed JWT.
-- **Seeding is destructive.** `config/dbmigrations/InitialSetupMigration` sits in the Mongock scan package but is an `ApplicationRunner`, not a `@ChangeUnit` — so it runs on every startup in every profile, and its constructor calls `cleanup()`, which **drops the `Authority` and `User` collections**. Locally created accounts do not survive a restart. It re-seeds `admin` / `Admin@01234` (`ROLE_ADMIN`, `ROLE_USER`), `user` / `User@0123` (`ROLE_USER`), and `operator` / `Operator@1234567` (`ROLE_OPERATOR`), logging the generated passwords at INFO. Treat all three as local-only credentials and do not rely on this class as a migration mechanism.
+- **Seeding is additive and JSON-driven.** `config/dbmigrations/InitialSetupMigration` is an `ApplicationRunner` annotated `@Profile({dev, test})` — it sits in the Mongock scan package but is not a `@ChangeUnit`, so do not rely on it as a migration mechanism. It reads `src/main/resources/hc-admin-gw-data.json`, the **single source of truth** for local accounts, and creates each only when no user with that login exists.
+
+  Under `dev`:
+
+  | Login      | Password           | Id               | Authorities                  |
+  | ---------- | ------------------ | ---------------- | ---------------------------- |
+  | `admin`    | `Admin@01234`      | `a0eebc99-…-a11` | `ROLE_ADMIN`, `ROLE_USER`    |
+  | `user`     | `User@0123`        | `a0eebc99-…-a13` | `ROLE_USER`                  |
+  | `operator` | `Operator@1234567` | `a0eebc99-…-a12` | `ROLE_OPERATOR`, `ROLE_USER` |
+
+  Under `test` it seeds edge-case fixtures instead: `deactivated`, `noauth`, `malformed`. Those declare no password, so their login is used as one.
+
+  Change accounts by editing the JSON, not the Java. The ids are a cross-service contract matching the `managedBy` / `createdBy` references in `hc-admin-service`'s seed data — **do not change them without updating both**.
+
+  Three things this class used to do and must not do again: drop the `User` and `Authority` collections on startup, log seed passwords, and derive credentials in code. `InitialSetupMigrationTest` guards all three.
+
+- **Production bootstrap is separate and credential-free.** `config/AdminBootstrapInitializer` runs in every profile but is inert unless `gateway.admin.password` is set (env: `GATEWAY_ADMIN_PASSWORD`), and skips if the account already exists. This is what gives a fresh production database a way in; the dev/test seed credentials must never reach production. `gateway.admin.login` and `gateway.admin.email` are optional overrides. Never add a default value for the password.
+
 - **Authorization rules** are centralised in `config/SecurityConfiguration` (reactive `pathMatchers`):
   - public: `/api/authenticate`, `/api/register`, `/api/activate`, `/api/account/reset-password/{init,finish}`, `/management/health/**`, `/management/info`, `/management/prometheus`, `/services/*/management/health/readiness`
   - `ROLE_ADMIN`: `/api/admin/**`, `/management/**`, `/v3/api-docs/**`, `/services/*/v3/api-docs`
@@ -93,7 +110,7 @@ If your local MongoDB requires authentication, `cp .env.local.example .env.local
 
 - Unit tests `*Test.java`; integration tests `*IT.java`. `SpringBootTestClassOrderer` runs plain unit tests before context-booting ones.
 - `@IntegrationTest` boots the full reactive context. Testcontainers are wired through `src/test/resources/META-INF/spring.factories`: `TestContainersSpringContextCustomizerFactory` supplies the MongoDB replica-set URI, and `KafkaTestContainersSpringContextCustomizerFactory` only starts Kafka for classes annotated `@EmbeddedKafka`.
-- **Known breakage:** `src/test/java/net/jojoaddison/config/DevelopmentUsersInitializerTest.java` instantiates `net.jojoaddison.config.DevelopmentUsersInitializer`, which does not exist under `src/main`. Test compilation fails until that class is restored or the test is removed.
+- Seeding coverage lives in `src/test/java/net/jojoaddison/config/dbmigrations/InitialSetupMigrationTest.java`. It asserts the create/skip behaviour, the three stable ids, the derived passwords, and — as regression guards — that no collection is ever dropped and that existing authorities are reused. It replaced `DevelopmentUsersInitializerTest`, which referenced a class removed when seeding was consolidated.
 
 ## Security Considerations
 

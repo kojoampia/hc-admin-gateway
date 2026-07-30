@@ -45,7 +45,7 @@
 - Quality checks:
   - `npm run backend:nohttp:test`
   - `./mvnw -Pprod clean verify sonar:sonar -Dsonar.login=admin -Dsonar.password=admin`
-- Known breakage: `src/test/java/net/jojoaddison/config/DevelopmentUsersInitializerTest.java` references `net.jojoaddison.config.DevelopmentUsersInitializer`, which does not exist under `src/main`. Test compilation fails until that class is restored or the test is removed.
+- Seeding coverage: `InitialSetupMigrationTest` and `AdminBootstrapInitializerTest`. Local accounts come from `src/main/resources/hc-admin-gw-data.json` (edit the JSON, not the Java). Do not reintroduce a collection drop, password logging, or code-derived credentials — those tests guard all three. `AdminBootstrapInitializer` handles the production first-admin and must never gain a default password.
 
 ## Conventions
 

@@ -57,17 +57,43 @@ To start your application in the dev profile, run:
 ./mvnw
 ```
 
-### Seeded accounts
+### Seeded accounts (dev / test)
 
-`config/dbmigrations/InitialSetupMigration` runs on **every** startup, in all profiles, and seeds three accounts. Passwords are derived in code from the login (capitalised login + `@` + ascending digits), not equal to the login:
+`config/dbmigrations/InitialSetupMigration` seeds local accounts from `src/main/resources/hc-admin-gw-data.json`, which is the **single source of truth** for them — ids, logins, emails, passwords and authorities all come from that file.
 
-| Login      | Password           | Authorities               |
-| ---------- | ------------------ | ------------------------- |
-| `admin`    | `Admin@01234`      | `ROLE_ADMIN`, `ROLE_USER` |
-| `user`     | `User@0123`        | `ROLE_USER`               |
-| `operator` | `Operator@1234567` | `ROLE_OPERATOR`           |
+Under the `dev` profile:
 
-> **Warning — this is destructive.** `InitialSetupMigration`'s constructor calls `cleanup()`, which **drops the `Authority` and `User` collections on every application start**. Any account you create locally is deleted on the next restart. It is also an `ApplicationRunner`, not a Mongock `@ChangeUnit`, so Mongock's changelog does not guard it from re-running. The seeding code additionally logs the generated passwords at INFO level.
+| Login      | Password           | Id               | Authorities                  |
+| ---------- | ------------------ | ---------------- | ---------------------------- |
+| `admin`    | `Admin@01234`      | `a0eebc99-…-a11` | `ROLE_ADMIN`, `ROLE_USER`    |
+| `user`     | `User@0123`        | `a0eebc99-…-a13` | `ROLE_USER`                  |
+| `operator` | `Operator@1234567` | `a0eebc99-…-a12` | `ROLE_OPERATOR`, `ROLE_USER` |
+
+Under the `test` profile it instead seeds three edge-case fixtures — `deactivated` (not activated), `noauth` (no authorities) and `malformed` (blank/null names). These declare no password, so their login is used as one.
+
+> Seeding is **additive**: an account is created only when no user with that login exists, so accounts you create through the API survive restarts. Nothing is ever dropped and passwords are never logged.
+>
+> The ids are a cross-service contract — `hc-admin-service`'s seed data references the admin and operator ids as `managedBy` / `createdBy` values. Changing an id in the JSON without updating that seed data breaks referential integrity between the two services.
+
+### Bootstrapping the first administrator (production)
+
+`InitialSetupMigration` is deliberately `@Profile({dev, test})`: its credentials are fixed and publicly known, so they must never reach production. A fresh production database therefore has no account to log in with.
+
+`config/AdminBootstrapInitializer` fills that gap without shipping any default credentials. It runs in every profile but does nothing unless a password is configured, and nothing if the account already exists:
+
+```bash
+export GATEWAY_ADMIN_PASSWORD='<a real secret>'
+```
+
+On the next start it creates a single activated administrator with `ROLE_ADMIN` and `ROLE_USER`. Leave the variable set — the bootstrap is idempotent and will skip once the account exists. Optional overrides:
+
+| Property                 | Env var                  | Default                        |
+| ------------------------ | ------------------------ | ------------------------------ |
+| `gateway.admin.password` | `GATEWAY_ADMIN_PASSWORD` | _(unset — bootstrap disabled)_ |
+| `gateway.admin.login`    | `GATEWAY_ADMIN_LOGIN`    | `admin`                        |
+| `gateway.admin.email`    | `GATEWAY_ADMIN_EMAIL`    | `admin@localhost`              |
+
+If the variable is unset the gateway starts normally and logs nothing at INFO; check for the debug message `gateway.admin.password is not set; skipping administrator bootstrap` if you expected an account and did not get one.
 
 If your local MongoDB requires authentication, use the local env + launcher workflow so you do not need to retype connection details each run:
 
@@ -142,7 +168,7 @@ Conventions:
 - `TechnicalStructureTest` enforces package-layer boundaries with ArchUnit — a new class in the wrong slice fails the build.
 - `JHipsterBlockHoundIntegration` detects blocking calls on reactive threads.
 
-> **Known breakage:** `src/test/java/net/jojoaddison/config/DevelopmentUsersInitializerTest.java` instantiates `net.jojoaddison.config.DevelopmentUsersInitializer`, which does not exist under `src/main`. Test compilation fails until that class is restored or the test is removed.
+Seeding is covered by `src/test/java/net/jojoaddison/config/dbmigrations/InitialSetupMigrationTest.java`, which asserts create/skip behaviour, the three stable ids, the derived passwords, and — as regression guards — that no collection is dropped and existing authorities are reused.
 
 ## Others
 
@@ -301,7 +327,7 @@ This starts Consul, MongoDB, and Kafka together.
 
 ### Login fails with credentials that worked before
 
-`InitialSetupMigration` drops the `User` and `Authority` collections on every startup and re-seeds the three built-in accounts (see [Seeded accounts](#seeded-accounts)). Any user you created through the API is gone after a restart. Note also that the seeded passwords are **not** the same as the logins — use `Admin@01234`, `User@0123`, `Operator@1234567`.
+The seeded passwords are **not** the same as the logins — use `Admin@01234`, `User@0123`, `Operator@1234567` (see [Seeded accounts](#seeded-accounts-dev--test)). If a user you created through the API is missing, check you are not on a fresh database; seeding itself no longer deletes anything.
 
 ### Requests to a microservice return 404 through the gateway
 
@@ -312,10 +338,6 @@ Check which path the caller is using against what the gateway actually publishes
 - the Angular dashboard currently calls `/services/hc-admin-ms/...`, which matches neither
 
 Confirm the service is registered in Consul at http://localhost:8500 before assuming a gateway bug.
-
-### Test compilation fails on `DevelopmentUsersInitializer`
-
-`src/test/java/net/jojoaddison/config/DevelopmentUsersInitializerTest.java` references a class that no longer exists in `src/main`. Restore the class or delete the test.
 
 ---
 

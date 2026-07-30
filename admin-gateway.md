@@ -20,11 +20,11 @@ Operational docs live elsewhere and are still current: [`README.md`](README.md) 
 
 Originally a blueprint for `hc-admin-gw-data.json`, covering user identity, authentication, and authorization for `dev` and `test` profiles.
 
-### ⚠ The blueprint is inert
+### This blueprint is live
 
-`src/main/resources/hc-admin-gw-data.json` exists and matches the structure below, but **no Java code reads it** — grepping for `hc-admin-gw-data` across `src/` returns nothing. All user seeding is done in code by `config/dbmigrations/InitialSetupMigration`.
+`src/main/resources/hc-admin-gw-data.json` is read at startup by `config/dbmigrations/InitialSetupMigration` under the `dev` and `test` profiles. It was inert for a period — accounts were hardcoded in Java and free to drift from it — which is what the rest of this section records.
 
-### Blueprint contents
+### File contents
 
 ```json
 {
@@ -32,16 +32,16 @@ Originally a blueprint for `hc-admin-gw-data.json`, covering user identity, auth
     {
       "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
       "login": "admin",
-      "password": "!!Admin1234$",
+      "password": "Admin@01234",
       "authorities": ["ROLE_ADMIN", "ROLE_USER"]
     },
     {
       "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12",
       "login": "operator",
-      "password": "!!Operator1234$",
+      "password": "Operator@1234567",
       "authorities": ["ROLE_OPERATOR", "ROLE_USER"]
     },
-    { "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13", "login": "user", "password": "!!User1234$", "authorities": ["ROLE_USER"] }
+    { "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13", "login": "user", "password": "User@0123", "authorities": ["ROLE_USER"] }
   ],
   "test": [
     { "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b11", "login": "deactivated", "activated": false, "authorities": ["ROLE_USER"] },
@@ -53,27 +53,30 @@ Originally a blueprint for `hc-admin-gw-data.json`, covering user identity, auth
 
 Each user carries `id`, `login`, `email`, `firstName`, `lastName`, `activated`, and `authorities`; `dev` users additionally carry `password`.
 
-### Blueprint vs. reality
+### The blueprint is now live
 
-`InitialSetupMigration` is the only thing that actually creates users, and it differs in every field that matters:
+`hc-admin-gw-data.json` is no longer inert — `InitialSetupMigration` reads it as the **single source of truth** for local accounts. Ids, logins, emails, passwords and authorities all come from the file; the Java constructs no users of its own. Edit the JSON to change an account.
 
-|                                                             | Blueprint (`hc-admin-gw-data.json`)  | Actual (`InitialSetupMigration`)    |
-| ----------------------------------------------------------- | ------------------------------------ | ----------------------------------- |
-| Loaded by                                                   | nothing                              | runs on every startup, all profiles |
-| `admin` id / password                                       | `a0eebc99-…-a11` / `!!Admin1234$`    | `user-1` / `Admin@01234`            |
-| `user` id / password                                        | `a0eebc99-…-a13` / `!!User1234$`     | `user-2` / `User@0123`              |
-| `operator` id / password                                    | `a0eebc99-…-a12` / `!!Operator1234$` | random UUID / `Operator@1234567`    |
-| `operator` authorities                                      | `ROLE_OPERATOR`, `ROLE_USER`         | `ROLE_OPERATOR` only                |
-| `test`-profile users (`deactivated`, `noauth`, `malformed`) | defined here                         | never created                       |
+|                                                        | Blueprint        | Delivered                                               |
+| ------------------------------------------------------ | ---------------- | ------------------------------------------------------- |
+| Loaded by                                              | nothing          | `InitialSetupMigration`, under `dev` / `test`           |
+| `admin`                                                | `a0eebc99-…-a11` | same, `Admin@01234`, `ROLE_ADMIN` + `ROLE_USER`         |
+| `user`                                                 | `a0eebc99-…-a13` | same, `User@0123`, `ROLE_USER`                          |
+| `operator`                                             | `a0eebc99-…-a12` | same, `Operator@1234567`, `ROLE_OPERATOR` + `ROLE_USER` |
+| `test` fixtures (`deactivated`, `noauth`, `malformed`) | defined here     | seeded under the `test` profile                         |
 
-Passwords in the code path are derived from the login — capitalised login + `@` + ascending digits — and are logged at INFO on startup.
+The file's original passwords (`!!Admin1234$` and friends) were replaced with the values already in circulation, so adopting it as the source of truth changed no working credential. Fixtures declare no password and fall back to their login.
 
-### ⚠ Two consequences worth knowing
+The operator now gets `ROLE_USER` in addition to `ROLE_OPERATOR`, per the blueprint — the previous hardcoded path granted only `ROLE_OPERATOR`.
 
-- **`InitialSetupMigration` drops the `User` and `Authority` collections on every boot.** Its constructor calls `cleanup()`, and it is an `ApplicationRunner` rather than a Mongock `@ChangeUnit`, so the changelog does not guard it from re-running. Accounts created through the API do not survive a restart.
-- **Cross-service `managedBy` references are dangling.** `hc-admin-service`'s seed data was written to reference `a0eebc99-…-a11` and `…a12` for relational integrity with the gateway. Those UUIDs do not exist in any running database — the real admin and user ids are `user-1` and `user-2`.
+### Fixed
 
-To make this blueprint real, either write a loader for `hc-admin-gw-data.json` or reconcile `InitialSetupMigration` with the IDs above. Neither has been done.
+- **Destructive seeding.** The constructor called a `cleanup()` that dropped the `User` and `Authority` collections on every start, so accounts created through the API were destroyed on the next restart. Removed — seeding is additive, guarded by an existence check per login. `InitialSetupMigrationTest.shouldNeverDropCollections` locks this in.
+- **Passwords logged in plaintext.** Seed users were logged at INFO as `Creating user with login: {} and password: {}`. Only the login is logged now.
+- **Unstable and dangling ids.** Users were seeded as `user-1`, `user-2`, and a fresh `UUID.randomUUID()` for the operator, so the `managedBy` / `createdBy` references in `hc-admin-service`'s seed data resolved to nothing and the operator id changed every startup. Ids now come from the blueprint and match.
+- **Dead blueprint.** Nothing read `hc-admin-gw-data.json`; accounts were hardcoded in Java, free to drift from the documented contract. The file is now the source of truth, and `test`-profile fixtures are created for the first time.
+- **No production bootstrap.** `InitialSetupMigration` became `@Profile({dev, test})`, leaving a fresh production database with no way to log in. `config/AdminBootstrapInitializer` now runs in every profile, creating one administrator when `gateway.admin.password` (env `GATEWAY_ADMIN_PASSWORD`) is set and no such account exists. It ships no default credential and is idempotent — see the README for the full property list.
+- **Orphaned test.** `DevelopmentUsersInitializerTest` referenced `DevelopmentUsersInitializer`, removed when seeding was consolidated here, which broke test compilation. Its create/skip coverage now lives in `InitialSetupMigrationTest`.
 
 ---
 
