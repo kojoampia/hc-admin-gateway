@@ -40,16 +40,23 @@ spring:
       indent-output: true
   cloud:
     gateway:
-      routes:
-        # Route for the AdminService Microservice
-        - id: admin-service-route
-          uri: http://localhost:5507
-          predicates:
-            # Matches any request starting with /services/admin-service/
-            - Path=/services/admin-service/**
-          filters:
-            - StripPrefix=2
-            - PreserveHostHeader=true
+      # Under `server.webflux` — see the note in application.yml. This route sat directly under
+      # `spring.cloud.gateway.routes` and therefore never registered, which is why a locally run
+      # gateway 404'd every /services/** request.
+      server:
+        webflux:
+          routes:
+            # The microservice registers in Consul as `hcadminservice`, so that is the path the
+            # dashboard calls and the one the discovery locator publishes. This static route exists
+            # for running the service outside Docker on its dev port, and must use the same name —
+            # it previously said `admin-service`, which nothing else in the system used.
+            - id: hcadminservice
+              uri: http://localhost:5507
+              predicates:
+                - Path=/services/hcadminservice/**
+              filters:
+                - StripPrefix=2
+                - PreserveHostHeader=true
     consul:
       config:
         fail-fast: false # if not in "prod" profile, do not force to use Spring Cloud Config
