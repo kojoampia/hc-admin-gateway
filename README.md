@@ -57,6 +57,17 @@ To start your application in the dev profile, run:
 ./mvnw
 ```
 
+### Authorities (every profile)
+
+`config/dbmigrations/AuthoritiesMigration`, a Mongock change unit, creates `ROLE_USER`, `ROLE_ADMIN` and
+`ROLE_OPERATOR` in **every** profile — production included. They are structural rather than sample data:
+registration grants `ROLE_USER` by looking it up, and `UserService` silently drops an authority it cannot find, so a
+database missing them quietly creates users with no authorities at all.
+
+Its id is `authorities-initialization` rather than the `users-initialization` this seeding once lived under, because
+Mongock records a change unit as executed and never repeats it — reusing that id would skip every database that has
+already run it.
+
 ### Seeded accounts (dev / test)
 
 `config/dbmigrations/InitialSetupMigration` seeds local accounts from `src/main/resources/hc-admin-gw-data.json`, which is the **single source of truth** for them — ids, logins, emails, passwords and authorities all come from that file.
