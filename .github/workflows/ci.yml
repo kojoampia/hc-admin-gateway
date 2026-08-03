@@ -1,0 +1,69 @@
+# The quality gate. Compiles the gateway and runs the full unit + integration suite.
+#
+# --- Why this is not part of release.yml -----------------------------------------------------------
+#
+# release.yml builds the production image and pushes it to GHCR. It deliberately does NOT run the
+# tests: the Dockerfile skips them, because the integration tests need Testcontainers and a build
+# container has no Docker daemon to give it.
+#
+# Folding this job into release.yml would mean a failing test leaves the registry with no image for a
+# commit that is already on main — the deployment would silently be pinned to an older SHA with no
+# way to deploy the current one. Keeping them separate means a red gate is loud and the image still
+# exists.
+#
+# The two run concurrently on the same push. That is intended: the gate reports on the commit, it
+# does not guard the build.
+#
+# --- Testcontainers --------------------------------------------------------------------------------
+#
+# ubuntu-latest runners ship a working Docker daemon, so `./mvnw verify` runs the *IT classes for
+# real. TestContainersSpringContextCustomizerFactory injects the Mongo replica-set URI, and Kafka
+# only starts for classes carrying @EmbeddedKafka — see src/test/resources/META-INF/spring.factories.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Supersede an in-flight run for the same ref: only the newest commit's result is interesting.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # 25 is what pom.xml targets and what the deployment runs. The enforcer range is [17,) here,
+      # so a mismatch would not fail the build — it would just test a different runtime than ships.
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+
+      - name: Verify
+        run: ./mvnw -ntp verify --batch-mode
+
+      # Checkstyle carries the nohttp rule, which fails on plaintext http:// URLs in source and
+      # config. Run it after the suite so a style failure never masks a real test failure.
+      - name: Checkstyle and nohttp
+        run: ./mvnw -ntp checkstyle:check --batch-mode
+
+      - name: Upload surefire and failsafe reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+          retention-days: 7
