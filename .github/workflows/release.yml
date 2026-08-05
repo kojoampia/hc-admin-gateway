@@ -116,7 +116,7 @@ jobs:
       # deployment of an unrelated application change. Results land in the Security tab, and the
       # exit-code stays 0 by design.
       - name: Scan the pushed image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: ${{ env.IMAGE_PATH }}:${{ github.sha }}
           format: sarif
