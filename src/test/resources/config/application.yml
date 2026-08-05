@@ -59,8 +59,10 @@ spring:
         kafkaProducer-out-0:
           content-type: text/plain
           group: admin-gateway
-  jackson:
-    serialization: {}
+  # No `jackson.serialization: {}` here. Spring Boot 4.1 moved to Jackson 3, whose
+  # SerializationFeature lives in tools.jackson.databind, and the empty flow mapping binds as the
+  # String "{}" rather than an empty Map — which fails the whole context with a
+  # ConverterNotFoundException. It configured nothing to begin with.
   mail:
     host: localhost
   main:
