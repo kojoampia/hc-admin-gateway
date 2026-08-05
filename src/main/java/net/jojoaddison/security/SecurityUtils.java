@@ -19,6 +19,12 @@ public final class SecurityUtils {
 
     public static final String AUTHORITIES_KEY = "auth";
 
+    /**
+     * Claim carrying the authenticated account's database id, alongside its login in {@code sub}.
+     * Consumed by hc-admin-service to attribute document writes — see {@link UserWithId}.
+     */
+    public static final String USER_ID_KEY = "uid";
+
     private SecurityUtils() {}
 
     /**

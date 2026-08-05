@@ -2,6 +2,7 @@ package net.jojoaddison.web.rest;
 
 import static net.jojoaddison.security.SecurityUtils.AUTHORITIES_KEY;
 import static net.jojoaddison.security.SecurityUtils.JWT_ALGORITHM;
+import static net.jojoaddison.security.SecurityUtils.USER_ID_KEY;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
@@ -9,6 +10,7 @@ import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.stream.Collectors;
+import net.jojoaddison.security.UserWithId;
 import net.jojoaddison.web.rest.vm.LoginVM;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,15 +94,27 @@ public class AuthenticateController {
         }
 
         // @formatter:off
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
             .issuedAt(now)
             .expiresAt(validity)
             .subject(authentication.getName())
-            .claim(AUTHORITIES_KEY, authorities)
-            .build();
+            .claim(AUTHORITIES_KEY, authorities);
+
+        // The account's database id, alongside its login in `sub`.
+        //
+        // The downstream admin service records who created and last changed each document, and its
+        // domain models reference accounts by ID, not by login — the seed data puts
+        // a0eebc99-...-a11 in createdBy, and CLAUDE.md names those ids a cross-service contract.
+        // That service runs with skipUserManagement: true and cannot look an id up, so without this
+        // claim it can only write logins into a field holding ids, mixing two identifier spaces in
+        // one column. Absent for any principal that is not a UserWithId, and the api falls back to
+        // Constants.SYSTEM in that case.
+        if (authentication.getPrincipal() instanceof UserWithId user) {
+            claims.claim(USER_ID_KEY, user.getId());
+        }
 
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
-        return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
+        return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims.build())).getTokenValue();
     }
 
     /**
