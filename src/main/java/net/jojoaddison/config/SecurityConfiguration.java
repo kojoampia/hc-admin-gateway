@@ -6,6 +6,7 @@ import static org.springframework.security.web.server.util.matcher.ServerWebExch
 import net.jojoaddison.security.AuthoritiesConstants;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
@@ -75,15 +76,22 @@ public class SecurityConfiguration {
                     // prettier-ignore
                 authz
                     .pathMatchers("/api/authenticate").permitAll()
-                    .pathMatchers("/api/register").permitAll()
-                    .pathMatchers("/api/activate").permitAll()
+                    // /api/register and /api/activate are deliberately absent. This is an internal
+                    // administrative console: accounts are provisioned by an admin through
+                    // /api/admin/users, and the handlers behind those two paths have been removed.
+                    // Self-registration here granted ROLE_USER to anyone on the internet.
                     .pathMatchers("/api/account/reset-password/init").permitAll()
                     .pathMatchers("/api/account/reset-password/finish").permitAll()
                     .pathMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .pathMatchers("/api/**").authenticated()
                     .pathMatchers("/services/*/management/health/readiness").permitAll()
                     .pathMatchers("/services/*/v3/api-docs").hasAuthority(AuthoritiesConstants.ADMIN)
-                    .pathMatchers("/services/**").authenticated()
+                    // Mirrors the downstream service's own read/write split (see the api's
+                    // SecurityConfiguration). The service enforces this itself — this is the outer
+                    // half of defence in depth, not the only gate.
+                    .pathMatchers(HttpMethod.GET, "/services/**")
+                        .hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.OPERATOR)
+                    .pathMatchers("/services/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .pathMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .pathMatchers("/management/health").permitAll()
                     .pathMatchers("/management/health/**").permitAll()

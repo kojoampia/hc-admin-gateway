@@ -102,6 +102,11 @@ public class MailService {
         this.sendEmailSync(user.getEmail(), subject, content, false, true);
     }
 
+    /**
+     * Retained for the account-creation flow only. The self-registration handler that used to call
+     * this is gone — accounts are created activated by an admin — but {@code creationEmail} shares
+     * this template's title key, and an admin-created account still gets a reset link by this path.
+     */
     public void sendActivationEmail(User user) {
         log.debug("Sending activation email to '{}'", user.getEmail());
         this.sendEmailFromTemplate(user, "mail/activationEmail", "email.activation.title");

@@ -8,7 +8,6 @@ import net.jojoaddison.domain.Authority;
 import net.jojoaddison.domain.User;
 import net.jojoaddison.repository.AuthorityRepository;
 import net.jojoaddison.repository.UserRepository;
-import net.jojoaddison.security.AuthoritiesConstants;
 import net.jojoaddison.security.SecurityUtils;
 import net.jojoaddison.service.dto.AdminUserDTO;
 import net.jojoaddison.service.dto.UserDTO;
@@ -43,19 +42,6 @@ public class UserService {
         this.authorityRepository = authorityRepository;
     }
 
-    public Mono<User> activateRegistration(String key) {
-        log.debug("Activating user for activation key {}", key);
-        return userRepository
-            .findOneByActivationKey(key)
-            .flatMap(user -> {
-                // activate given user for the registration key.
-                user.setActivated(true);
-                user.setActivationKey(null);
-                return saveUser(user);
-            })
-            .doOnNext(user -> log.debug("Activated user: {}", user));
-    }
-
     public Mono<User> completePasswordReset(String newPassword, String key) {
         log.debug("Reset user password for reset key {}", key);
         return userRepository
@@ -82,58 +68,6 @@ public class UserService {
                 return user;
             })
             .flatMap(this::saveUser);
-    }
-
-    public Mono<User> registerUser(AdminUserDTO userDTO, String password) {
-        return userRepository
-            .findOneByLogin(userDTO.getLogin().toLowerCase())
-            .flatMap(existingUser -> {
-                if (!existingUser.isActivated()) {
-                    return userRepository.delete(existingUser);
-                } else {
-                    return Mono.error(new UsernameAlreadyUsedException());
-                }
-            })
-            .then(userRepository.findOneByEmailIgnoreCase(userDTO.getEmail()))
-            .flatMap(existingUser -> {
-                if (!existingUser.isActivated()) {
-                    return userRepository.delete(existingUser);
-                } else {
-                    return Mono.error(new EmailAlreadyUsedException());
-                }
-            })
-            .publishOn(Schedulers.boundedElastic())
-            .then(
-                Mono.fromCallable(() -> {
-                    User newUser = new User();
-                    String encryptedPassword = passwordEncoder.encode(password);
-                    newUser.setLogin(userDTO.getLogin().toLowerCase());
-                    // new user gets initially a generated password
-                    newUser.setPassword(encryptedPassword);
-                    newUser.setFirstName(userDTO.getFirstName());
-                    newUser.setLastName(userDTO.getLastName());
-                    if (userDTO.getEmail() != null) {
-                        newUser.setEmail(userDTO.getEmail().toLowerCase());
-                    }
-                    newUser.setImageUrl(userDTO.getImageUrl());
-                    newUser.setLangKey(userDTO.getLangKey());
-                    // new user is not active
-                    newUser.setActivated(false);
-                    // new user gets registration key
-                    newUser.setActivationKey(RandomUtil.generateActivationKey());
-                    return newUser;
-                })
-            )
-            .flatMap(newUser -> {
-                Set<Authority> authorities = new HashSet<>();
-                return authorityRepository
-                    .findById(AuthoritiesConstants.USER)
-                    .map(authorities::add)
-                    .thenReturn(newUser)
-                    .doOnNext(user -> user.setAuthorities(authorities))
-                    .flatMap(this::saveUser)
-                    .doOnNext(user -> log.debug("Created Information for User: {}", user));
-            });
     }
 
     public Mono<User> createUser(AdminUserDTO userDTO) {

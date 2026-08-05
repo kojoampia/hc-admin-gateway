@@ -57,6 +57,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # Required by upload-sarif.
+      security-events: write
     steps:
       # Into a subdirectory rather than the workspace root, so the deployment checkout below cannot
       # end up inside this repo's build context.
@@ -105,6 +107,30 @@ jobs:
             ${{ env.IMAGE_PATH }}:latest
           cache-from: type=gha,scope=gateway
           cache-to: type=gha,scope=gateway,mode=max
+
+      # Scans the image that was just pushed, not a rebuild of it — the digest above is what runs in
+      # production, and a scan of anything else is a scan of something else.
+      #
+      # Reports, does not block: this pipeline deliberately keeps the registry populated even when a
+      # check fails (see the header), and a base-image CVE with no upstream fix would otherwise stop
+      # deployment of an unrelated application change. Results land in the Security tab, and the
+      # exit-code stays 0 by design.
+      - name: Scan the pushed image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_PATH }}:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload the scan to the Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-image
 
       - name: Report the deploy command
         run: |

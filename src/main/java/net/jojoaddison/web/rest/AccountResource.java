@@ -14,7 +14,6 @@ import net.jojoaddison.web.rest.vm.ManagedUserVM;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -46,36 +45,18 @@ public class AccountResource {
         this.mailService = mailService;
     }
 
-    /**
-     * {@code POST  /register} : register the user.
-     *
-     * @param managedUserVM the managed user View Model.
-     * @throws InvalidPasswordException {@code 400 (Bad Request)} if the password is incorrect.
-     * @throws EmailAlreadyUsedException {@code 400 (Bad Request)} if the email is already used.
-     * @throws LoginAlreadyUsedException {@code 400 (Bad Request)} if the login is already used.
-     */
-    @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    public Mono<Void> registerAccount(@Valid @RequestBody ManagedUserVM managedUserVM) {
-        if (isPasswordLengthInvalid(managedUserVM.getPassword())) {
-            throw new InvalidPasswordException();
-        }
-        return userService.registerUser(managedUserVM, managedUserVM.getPassword()).doOnSuccess(mailService::sendActivationEmail).then();
-    }
-
-    /**
-     * {@code GET  /activate} : activate the registered user.
-     *
-     * @param key the activation key.
-     * @throws RuntimeException {@code 500 (Internal Server Error)} if the user couldn't be activated.
-     */
-    @GetMapping("/activate")
-    public Mono<Void> activateAccount(@RequestParam(value = "key") String key) {
-        return userService
-            .activateRegistration(key)
-            .switchIfEmpty(Mono.error(new AccountResourceException("No user was found for this activation key")))
-            .then();
-    }
+    // There is deliberately no POST /register and no GET /activate.
+    //
+    // This is an internal administrative console. Self-registration granted ROLE_USER to anyone who
+    // could reach the login page, and the downstream service admitted any authenticated principal —
+    // so the two together were a path from the open internet to every organisation, facility and
+    // patient subscription in the system. Accounts are created by an admin through
+    // /api/admin/users (UserResource, ROLE_ADMIN on every method), which sets `activated` directly
+    // and needs no activation key.
+    //
+    // UserService.registerUser and activateRegistration are likewise gone. If self-service signup is
+    // ever wanted here, it needs an approval step and a default authority that grants nothing —
+    // not a revival of these two handlers.
 
     /**
      * {@code GET  /account} : get the current user.
