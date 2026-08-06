@@ -29,6 +29,7 @@
         <run.addResources>false</run.addResources>
         <jhipster-dependencies.version>8.11.0</jhipster-dependencies.version>
         <spring-boot.version>4.1.0</spring-boot.version>
+        <netty.version>4.2.17.Final</netty.version>
         <spring-cloud.version>2025.1.2</spring-cloud.version>
         <springdoc.version>3.0.3</springdoc.version>
         <archunit-junit5.version>1.4.2</archunit-junit5.version>
@@ -67,6 +68,34 @@
 
     <dependencyManagement>
         <dependencies>
+            <!--
+                netty-bom is imported FIRST, deliberately.
+
+                spring-boot-dependencies 4.1.0 manages Netty 4.2.15, against which Trivy flagged
+                four high-severity CVEs in the built image: netty-codec-http, -http2, -http3 and
+                -compression. All are fixed in 4.2.16; this takes 4.2.17, the newest 4.2.x.
+
+                Setting <netty.version> alone does NOT work here and was tried first. That property
+                override only applies when a project INHERITS from spring-boot-starter-parent. This
+                pom IMPORTS spring-boot-dependencies instead, and an imported BOM resolves its own
+                properties in its own context — so the version stayed at 4.2.15 while the property
+                said otherwise. The property below is kept only so this version has one name.
+
+                For imported BOMs the rule is first declaration wins, hence the position.
+
+                Only the gateway needs this: it is the reactive service, so Netty is on its runtime
+                path. The api runs Spring MVC on Tomcat and pulls no Netty at all.
+
+                Drop this block once spring-boot-dependencies manages 4.2.17 or later, and confirm
+                with `./mvnw dependency:tree | grep netty` rather than trusting the property.
+            -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
