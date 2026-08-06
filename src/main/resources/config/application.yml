@@ -240,7 +240,24 @@ jhipster:
     contact-email:
     license: unlicensed
     license-url:
-  security:
+  # NOTE: there is deliberately no bare `security:` key here.
+  #
+  # One sat here from the original 2024 JHipster generation, with nothing under it. Spring Boot
+  # 4.0.6 ignored it; Boot 4.1 binds it as the empty String and fails, because
+  # JHipsterProperties.security is an object and has no String setter:
+  #
+  #     Failed to bind properties under 'jhipster' to tech.jhipster.config.JHipsterProperties:
+  #       Property: jhipster.security
+  #       Value: ""
+  #       Reason: No setter found for property: security
+  #
+  # It took the gateway down on the first prod deploy after the Boot 4.1 upgrade. Nothing caught it
+  # earlier: the whole test suite runs under the `test` profile against
+  # src/test/resources/config/application.yml, so this file's prod-side binding was never exercised.
+  # ConfigurationBindingIT now covers it.
+  #
+  # The empty keys left above (contact-name, license-url and friends) are String-typed, so "" binds
+  # cleanly. Emptiness is only fatal where the target is an object.
 # ===================================================================
 # Application specific properties
 # Add your own application properties here, see the ApplicationProperties class
