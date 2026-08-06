@@ -69,6 +69,25 @@
     <dependencyManagement>
         <dependencies>
             <!--
+                plexus-utils, pinned past CVE-2025-67030.
+
+                It arrives transitively and lands in the shipped fat jar, not merely in the build
+                stage: Trivy locates it at app/app.jar/BOOT-INF/lib/plexus-utils-3.2.0.jar. The path
+                is io.mongock:mongock-springboot-v3 -> mongock-runner-core -> maven-artifact:3.6.1
+                -> plexus-utils:3.2.0.
+
+                Pinned rather than upgraded at source because Mongock 5.5.1 is already the latest
+                release, and rather than excluded because maven-artifact needs it on the classpath.
+
+                3.6.1, not the 4.0.x line: maven-artifact 3.6.1 was built against the 3.x API, and
+                3.6.1 carries the fix without crossing a major.
+            -->
+            <dependency>
+                <groupId>org.codehaus.plexus</groupId>
+                <artifactId>plexus-utils</artifactId>
+                <version>3.6.1</version>
+            </dependency>
+            <!--
                 netty-bom is imported FIRST, deliberately.
 
                 spring-boot-dependencies 4.1.0 manages Netty 4.2.15, against which Trivy flagged
