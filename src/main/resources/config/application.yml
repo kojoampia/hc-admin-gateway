@@ -127,14 +127,25 @@ spring:
             locator:
               enabled: true
               lower-case-service-id: true
+              # NO `.toLowerCase()` IN THESE EXPRESSIONS. `lower-case-service-id: true` above already
+              # hands `serviceId` over lower-cased, and Spring Cloud Gateway now evaluates these with
+              # a SimpleEvaluationContext that has no method resolver at all — so any method call
+              # fails with `EL1004E: Method toLowerCase() cannot be found on type java.lang.String`,
+              # taking the whole context down at startup ("Failed to start bean
+              # 'outputBindingLifecycle'", which names neither this file nor the real cause).
+              #
+              # It read `serviceId.toLowerCase()` until 2026-08-07, and could not have been caught
+              # earlier: this block only became live when it moved under `server.webflux` (see the
+              # note above). Before that nothing read it, so the gateway started fine and routed
+              # nothing.
               predicates:
                 - name: Path
                   args:
-                    pattern: "'/services/'+serviceId.toLowerCase()+'/**'"
+                    pattern: "'/services/'+serviceId+'/**'"
               filters:
                 - name: RewritePath
                   args:
-                    regexp: "'/services/' + serviceId.toLowerCase() + '/(?<remaining>.*)'"
+                    regexp: "'/services/' + serviceId + '/(?<remaining>.*)'"
                     replacement: "'/${remaining}'"
           httpclient:
             pool:
