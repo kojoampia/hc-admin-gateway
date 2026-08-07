@@ -107,7 +107,7 @@ public class AuthenticateController {
         // a0eebc99-...-a11 in createdBy, and CLAUDE.md names those ids a cross-service contract.
         // That service runs with skipUserManagement: true and cannot look an id up, so without this
         // claim it can only write logins into a field holding ids, mixing two identifier spaces in
-        // one column. Absent for any principal that is not a UserWithId, and the api falls back to
+        // one column. Absent for any principal that is not an Account, and the api falls back to
         // Constants.SYSTEM in that case.
         if (authentication.getPrincipal() instanceof Account user) {
             claims.claim(USER_ID_KEY, user.getId());

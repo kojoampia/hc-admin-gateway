@@ -55,8 +55,8 @@ public class DomainUserDetailsService implements ReactiveUserDetailsService {
             .map(Authority::getName)
             .map(SimpleGrantedAuthority::new)
             .toList();
-        // UserWithId, not Spring's User: the id has to survive as far as token minting — see the
-        // class comment on UserWithId for why the downstream service needs it.
+        // Account, not Spring's User: the id has to survive as far as token minting — see the
+        // class comment on Account for why the downstream service needs it.
         return new Account(user.getId(), user.getLogin(), user.getPassword(), grantedAuthorities);
     }
 
