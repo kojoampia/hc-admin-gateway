@@ -10,7 +10,7 @@ import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.stream.Collectors;
-import net.jojoaddison.security.UserWithId;
+import net.jojoaddison.security.Account;
 import net.jojoaddison.web.rest.vm.LoginVM;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,7 +109,7 @@ public class AuthenticateController {
         // claim it can only write logins into a field holding ids, mixing two identifier spaces in
         // one column. Absent for any principal that is not a UserWithId, and the api falls back to
         // Constants.SYSTEM in that case.
-        if (authentication.getPrincipal() instanceof UserWithId user) {
+        if (authentication.getPrincipal() instanceof Account user) {
             claims.claim(USER_ID_KEY, user.getId());
         }
 

@@ -45,7 +45,7 @@ public class DomainUserDetailsService implements ReactiveUserDetailsService {
             .map(user -> createSpringSecurityUser(lowercaseLogin, user));
     }
 
-    private UserWithId createSpringSecurityUser(String lowercaseLogin, User user) {
+    private Account createSpringSecurityUser(String lowercaseLogin, User user) {
         if (!user.isActivated()) {
             throw new UserNotActivatedException("User " + lowercaseLogin + " was not activated");
         }
@@ -57,7 +57,7 @@ public class DomainUserDetailsService implements ReactiveUserDetailsService {
             .toList();
         // UserWithId, not Spring's User: the id has to survive as far as token minting — see the
         // class comment on UserWithId for why the downstream service needs it.
-        return new UserWithId(user.getId(), user.getLogin(), user.getPassword(), grantedAuthorities);
+        return new Account(user.getId(), user.getLogin(), user.getPassword(), grantedAuthorities);
     }
 
     private boolean looksLikeEmail(String login) {

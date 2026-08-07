@@ -22,13 +22,13 @@ import org.springframework.security.core.userdetails.User;
  * <p>Carrying it here rather than re-reading the user in {@code createToken} keeps authentication to
  * the one query it already makes.
  */
-public class UserWithId extends User {
+public class Account extends User {
 
     private static final long serialVersionUID = 1L;
 
     private final String id;
 
-    public UserWithId(String id, String username, String password, Collection<? extends GrantedAuthority> authorities) {
+    public Account(String id, String username, String password, Collection<? extends GrantedAuthority> authorities) {
         super(username, password, authorities);
         this.id = id;
     }
