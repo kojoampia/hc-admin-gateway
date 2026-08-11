@@ -136,6 +136,26 @@ spring:
           # Verified by observation, not by reading: with this unset the api saw no X-Forwarded-*
           # at all, and with it set it received X-Forwarded-Prefix and rebuilt the caller's URL.
           trusted-proxies: "127\\.0\\.0\\.1|::1|0:0:0:0:0:0:0:1|10\\..*|192\\.168\\..*|172\\.(1[6-9]|2[0-9]|3[01])\\..*"
+          # Do not describe THIS hop to the service behind us.
+          #
+          # Spring Cloud Gateway emits the RFC 7239 `Forwarded` header for its own connection —
+          # `proto=http;host="gateway:5503"` — and Spring's ForwardedHeaderFilter gives `Forwarded`
+          # PRECEDENCE over X-Forwarded-*. So the service read the gateway's plain-http hop and
+          # ignored the `X-Forwarded-Proto: https` nginx had put there, building http:// links onto
+          # an HTTPS page. Turning it off leaves X-Forwarded-* as the single source, where the
+          # browser's values come first and are the ones Spring takes.
+          #
+          # Observed, not deduced: the service received
+          #   X-Forwarded-Proto: https,http
+          #   Forwarded: proto=http;host="127.0.0.1:5503"
+          # and used the second.
+          forwarded:
+            enabled: false
+          x-forwarded:
+            # Same reasoning, one header further: the gateway's own port is 5503 and appending it
+            # produced https://admin.abofonsa.com:5503/... Nothing upstream sends a port, so with
+            # this off Spring derives it from the scheme and omits the default.
+            port-enabled: false
           default-filters:
             - JWTRelay
           discovery:
