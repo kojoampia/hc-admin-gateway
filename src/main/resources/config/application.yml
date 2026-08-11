@@ -147,6 +147,19 @@ spring:
                   args:
                     regexp: "'/services/' + serviceId + '/(?<remaining>.*)'"
                     replacement: "'/${remaining}'"
+                # Tell the downstream service what was just stripped off. It builds absolute URLs
+                # (PaginationUtil's `Link` headers) from the request it receives, so without this it
+                # advertises `/api/...` — its own path, which is the gateway's surface and 404s for
+                # any client that follows it. The service turns this back into the caller's path via
+                # `server.forward-headers-strategy: framework`; see hc-admin-service's
+                # ForwardedHeadersIT, which fails if this filter is removed.
+                #
+                # Same SpEL constraint as the predicate above: string concatenation only, no method
+                # calls. `lower-case-service-id: true` has already lower-cased serviceId.
+                - name: AddRequestHeader
+                  args:
+                    name: "'X-Forwarded-Prefix'"
+                    value: "'/services/' + serviceId"
           httpclient:
             pool:
               max-connections: 1000
