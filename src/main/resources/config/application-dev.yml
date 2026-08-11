@@ -57,6 +57,9 @@ spring:
               filters:
                 - StripPrefix=2
                 - PreserveHostHeader=true
+                # What StripPrefix just removed, handed on so the service can rebuild the caller's
+                # URL in its `Link` headers. Mirrors the discovery locator in application.yml.
+                - AddRequestHeader=X-Forwarded-Prefix, /services/hcadminservice
     consul:
       config:
         fail-fast: false # if not in "prod" profile, do not force to use Spring Cloud Config
