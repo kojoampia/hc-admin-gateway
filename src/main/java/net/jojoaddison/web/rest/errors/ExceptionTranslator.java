@@ -228,6 +228,17 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler implemen
         if (err instanceof ConcurrencyFailureException) return HttpStatus.CONFLICT;
         if (err instanceof BadCredentialsException) return HttpStatus.UNAUTHORIZED;
         if (err instanceof UsernameNotFoundException) return HttpStatus.UNAUTHORIZED;
+        // Every other AuthenticationException, and UserNotActivatedException is the one that
+        // matters: it extends AuthenticationException but neither of the two above, so it fell
+        // through to null and became a 500. Signing in with a deactivated account answered
+        // "500 Internal Server Error" while the body it was given already read
+        // "Unauthorized / Invalid credentials" — the ProblemDetail branch recognised it as an
+        // authentication failure and only the status disagreed.
+        //
+        // A 500 there is worse than untidy. It is distinguishable from the 401 a wrong password
+        // gets, so it tells an unauthenticated caller that the account exists and is merely
+        // switched off — the information the "Invalid credentials" wording exists to withhold.
+        if (err instanceof AuthenticationException) return HttpStatus.UNAUTHORIZED;
         return null;
     }
 

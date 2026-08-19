@@ -145,6 +145,53 @@ class AuthenticateControllerIT {
             .isNotEmpty();
     }
 
+    /**
+     * A deactivated account is refused, and refused the same way a wrong password is.
+     *
+     * <p>This path existed and was covered only at the service layer, by {@code
+     * DomainUserDetailsServiceIT} asserting that {@code DomainUserDetailsService} throws
+     * {@code UserNotActivatedException}. Nothing checked what that becomes over HTTP. The only
+     * failure case here used an unknown login with a wrong password, which exercises a different
+     * branch entirely — the user is never found, so the activation check is never reached.
+     *
+     * <p>What that left uncovered is a real regression shape: {@code UserNotActivatedException}
+     * extends {@code AuthenticationException}, and if it ever stopped being translated — a changed
+     * exception handler, a reordered filter — the natural failure is a {@code 500}, which leaks that
+     * the account exists, or worse a {@code 200} with a token for an account somebody deliberately
+     * switched off.
+     *
+     * <p>The assertion deliberately includes "no token in the body". A 401 with a usable
+     * {@code id_token} beside it would satisfy a status-only check and be exactly the bug worth
+     * fearing.
+     */
+    @Test
+    void aDeactivatedAccountIsRefused() throws Exception {
+        User user = new User();
+        user.setLogin("deactivated-jwt-controller");
+        user.setEmail("deactivated-jwt-controller@example.com");
+        user.setActivated(false);
+        user.setPassword(passwordEncoder.encode("test"));
+
+        userRepository.save(user).block();
+
+        LoginVM login = new LoginVM();
+        login.setUsername("deactivated-jwt-controller");
+        login.setPassword("test");
+        webTestClient
+            .post()
+            .uri("/api/authenticate")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(om.writeValueAsBytes(login))
+            .exchange()
+            .expectStatus()
+            .isUnauthorized()
+            .expectHeader()
+            .doesNotExist("Authorization")
+            .expectBody()
+            .jsonPath("$.id_token")
+            .doesNotExist();
+    }
+
     @Test
     void testAuthorizeFails() throws Exception {
         LoginVM login = new LoginVM();
