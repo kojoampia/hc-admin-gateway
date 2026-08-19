@@ -9,6 +9,7 @@ import com.nimbusds.jose.util.Base64;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
@@ -60,6 +61,27 @@ public class JwtAuthenticationTestUtils {
             .expiresAt(now.plusSeconds(60))
             .subject(user)
             .claims(customClaim -> customClaim.put(AUTHORITIES_KEY, Collections.singletonList("ROLE_ADMIN")))
+            .build();
+
+        JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
+        return encoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
+    }
+
+    /**
+     * A valid token carrying exactly the authorities given — including none at all.
+     *
+     * {@link #createValidTokenForUser} hardcodes {@code ROLE_ADMIN}, which is the one authority that
+     * passes every rule in {@code SecurityConfiguration}. A test of who is *refused* cannot use it.
+     */
+    public static String createTokenWithAuthorities(String jwtKey, String user, String... authorities) {
+        JwtEncoder encoder = jwtEncoder(jwtKey);
+        var now = Instant.now();
+
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+            .issuedAt(now)
+            .expiresAt(now.plusSeconds(60))
+            .subject(user)
+            .claims(customClaim -> customClaim.put(AUTHORITIES_KEY, Arrays.asList(authorities)))
             .build();
 
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
