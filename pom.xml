@@ -867,6 +867,50 @@
                             </goals>
                         </execution>
                         <!--
+                          One report covering both phases.
+
+                          Without it the only whole-project view is target/site/jacoco, which is the
+                          UNIT run alone — and reading it is genuinely misleading rather than merely
+                          incomplete. It reports AuthenticateController and DomainUserDetailsService
+                          at 0% when both have full integration suites, so the natural conclusion is
+                          that they are untested and the natural next step is to write tests that
+                          already exist. That mistake was made against this very project.
+                          
+                          Sonar is unaffected either way: sonar-project.properties globs
+                          target/site/**/jacoco*.xml and so already sees both. This is for whoever
+                          opens the HTML, which is the case the glob does not help.
+                        -->
+                        <execution>
+                            <id>merge-coverage</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>merge</goal>
+                            </goals>
+                            <configuration>
+                                <fileSets>
+                                    <fileSet>
+                                        <directory>${project.build.directory}</directory>
+                                        <includes>
+                                            <include>jacoco.exec</include>
+                                            <include>jacoco-it.exec</include>
+                                        </includes>
+                                    </fileSet>
+                                </fileSets>
+                                <destFile>${project.build.directory}/jacoco-merged.exec</destFile>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>merged-coverage-report</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
+                                <outputDirectory>${project.reporting.outputDirectory}/jacoco-merged</outputDirectory>
+                            </configuration>
+                        </execution>
+                        <!--
                           A floor, not a target. Coverage was measured on every build and enforced on
                           none, so it could only drift down without anyone noticing.
 
