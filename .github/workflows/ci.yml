@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 25 is what pom.xml targets and what the deployment runs. The enforcer range is [17,) here,
       # so a mismatch would not fail the build — it would just test a different runtime than ships.
