@@ -63,12 +63,12 @@ jobs:
       # Into a subdirectory rather than the workspace root, so the deployment checkout below cannot
       # end up inside this repo's build context.
       - name: Check out the gateway
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: app
 
       - name: Check out the deployment repo (for docker/gateway.Dockerfile)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ vars.DEPLOY_REPO || format('{0}/hc-admin-ci', github.repository_owner) }}
           # HC_ADMIN_CI_TOKEN is required — see the header. The fallback to github.token is not a
