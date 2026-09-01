@@ -44,7 +44,7 @@ jobs:
       # 25 is what pom.xml targets and what the deployment runs. The enforcer range is [17,) here,
       # so a mismatch would not fail the build — it would just test a different runtime than ships.
       - name: Set up JDK 25
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '25'
           distribution: temurin
