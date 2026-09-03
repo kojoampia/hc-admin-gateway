@@ -52,8 +52,17 @@ import reactor.core.publisher.Mono;
  * injecting the bean. So a bare {@code Sort} parameter is the only thing that reads the second bean, and no endpoint
  * takes one today. That is why it is asserted here and nowhere else.
  *
- * <p>The echo controller below exists because no shipping endpoint hands a {@code Pageable} back. It is a test fixture,
- * registered as a bean rather than component-scanned so it reaches no other context.
+ * <p>The echo controller below exists because no shipping endpoint hands a {@code Pageable} back, and it is
+ * <b>nested inside this class deliberately</b>. What keeps it out of every other integration-test context is not its
+ * being declared as a bean rather than component-scanned — this paragraph said that until 2026-09-03 and it named the
+ * wrong mechanism. Boot's {@code TestTypeExcludeFilter}, which is the filter {@code @SpringBootApplication}'s component
+ * scan consults, matches a class whose {@code getEnclosingClassName()} matches, recursing outwards; so <em>any</em>
+ * class nested in a JUnit test class is excluded whatever stereotype it carries. Read out of
+ * {@code spring-boot-test-4.1.0.jar}, not recalled.
+ *
+ * <p>The reason that is worth knowing is the trap. Promote {@code PageableEchoController} to a top-level class under
+ * {@code src/test} — a plausible tidy-up, and one nothing here would fail on — and it is scanned normally, and
+ * {@code /api/test/**} appears in every integration-test context in this module.
  */
 @AutoConfigureWebTestClient(timeout = IntegrationTest.DEFAULT_TIMEOUT)
 @WithMockUser(authorities = AuthoritiesConstants.ADMIN)

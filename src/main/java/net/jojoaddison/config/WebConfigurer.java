@@ -55,6 +55,11 @@ public class WebConfigurer implements WebFluxConfigurer {
      * These two carried the generator's "TODO: remove when this is supported in spring-boot" for several major versions
      * without anyone re-reading it. Re-checked 2026-09-03 against Spring Boot 4.1.0 / Spring Cloud 2025.1.2
      * (spring-data-commons 4.1.0, spring-webflux 7.0.8): Boot still does not supply them for WebFlux, so they stay.
+     * Re-read this at the next Spring Boot minor — a dated note nobody is prompted to revisit decays back into the TODO
+     * it replaced. The working behind the conclusion is deliberately not repeated here: javap -v on the
+     * autoconfiguration's class file, and the sweep of every jar on the resolved classpath, are recorded in backlog.md
+     * item 8, in the private hc-admin-doc repository. This comment carries the finding; that entry carries the method,
+     * and the inversion figures with it.
      *
      * What Boot supplies is servlet-only. SpringDataWebAutoConfiguration is now DataWebAutoConfiguration, in the
      * spring-boot-data-commons module; it is on this classpath and it is annotated
@@ -64,12 +69,28 @@ public class WebConfigurer implements WebFluxConfigurer {
      * ReactivePageableHandlerMethodArgumentResolver or ReactiveSortHandlerMethodArgumentResolver is the resolver's own
      * class file in spring-data-commons. This class is their only source.
      *
-     * ReactivePageableArgumentResolverIT is what makes that falsifiable rather than merely asserted — a green build
-     * after deleting a bean would not have meant Boot had taken over, only that nothing exercised the binding. It also
-     * records the asymmetry found by removing each in turn: the pageable bean is what UserResource and
+     * One consequence is easy to trip over: because DataWebAutoConfiguration never applies here, spring.data.web.* is
+     * inert in this application. Both resolvers are constructed with new and no customizer, so default-page-size,
+     * max-page-size and the request parameter names cannot be set in YAML and the effective cap is the resolver's own
+     * default. Nothing sets those properties today; setting one would bind and do nothing.
+     *
+     * Both beans are declared returning the HandlerMethodArgumentResolver interface, and that is load-bearing rather
+     * than untidy. ReactivePageableArgumentResolverIT#webConfigurerIsTheOnlySourceOfTheResolvers can only ever notice
+     * Boot starting to supply these if some future @ConditionalOnMissingBean is evaluated against the concrete type and
+     * finds nothing — and a condition matches on a factory method's declared return type, without instantiating it.
+     * Narrowing these two signatures to the concrete classes therefore reads as a tidy-up and is not one: the
+     * conditional would match, Boot would stay silent, and that assertion would stay green with both beans redundant.
+     *
+     * ReactivePageableArgumentResolverIT is what makes the conclusion falsifiable rather than merely asserted — a green
+     * build after deleting a bean would not have meant Boot had taken over, only that nothing exercised the binding. It
+     * also records the asymmetry found by removing each in turn: the pageable bean is what UserResource and
      * PublicUserResource depend on, while the sort bean is reached only by a bare Sort parameter, which no endpoint
      * takes today. Removing the sort bean leaves Pageable binding intact, because the resolver above constructs its own
      * sort resolver internally rather than injecting this one.
+     *
+     * So the sort bean has an exit criterion, and it is not "a test went red, therefore it is needed". To delete it,
+     * delete bindsASortArgument and the sort-echo endpoint with it; the only consequence is that a future endpoint
+     * taking a bare Sort would 500 until the bean came back.
      */
     @Bean
     HandlerMethodArgumentResolver reactivePageableHandlerMethodArgumentResolver() {
