@@ -51,13 +51,31 @@ public class WebConfigurer implements WebFluxConfigurer {
         return source;
     }
 
-    // TODO: remove when this is supported in spring-boot
+    /*
+     * These two carried the generator's "TODO: remove when this is supported in spring-boot" for several major versions
+     * without anyone re-reading it. Re-checked 2026-09-03 against Spring Boot 4.1.0 / Spring Cloud 2025.1.2
+     * (spring-data-commons 4.1.0, spring-webflux 7.0.8): Boot still does not supply them for WebFlux, so they stay.
+     *
+     * What Boot supplies is servlet-only. SpringDataWebAutoConfiguration is now DataWebAutoConfiguration, in the
+     * spring-boot-data-commons module; it is on this classpath and it is annotated
+     * @ConditionalOnWebApplication(type = SERVLET) and @ConditionalOnClass(WebMvcConfigurer.class). This gateway is
+     * reactive and carries no spring-webmvc, so neither condition can hold. Nothing else registers the reactive pair
+     * either: across every jar on the resolved classpath the only class that so much as names
+     * ReactivePageableHandlerMethodArgumentResolver or ReactiveSortHandlerMethodArgumentResolver is the resolver's own
+     * class file in spring-data-commons. This class is their only source.
+     *
+     * ReactivePageableArgumentResolverIT is what makes that falsifiable rather than merely asserted — a green build
+     * after deleting a bean would not have meant Boot had taken over, only that nothing exercised the binding. It also
+     * records the asymmetry found by removing each in turn: the pageable bean is what UserResource and
+     * PublicUserResource depend on, while the sort bean is reached only by a bare Sort parameter, which no endpoint
+     * takes today. Removing the sort bean leaves Pageable binding intact, because the resolver above constructs its own
+     * sort resolver internally rather than injecting this one.
+     */
     @Bean
     HandlerMethodArgumentResolver reactivePageableHandlerMethodArgumentResolver() {
         return new ReactivePageableHandlerMethodArgumentResolver();
     }
 
-    // TODO: remove when this is supported in spring-boot
     @Bean
     HandlerMethodArgumentResolver reactiveSortHandlerMethodArgumentResolver() {
         return new ReactiveSortHandlerMethodArgumentResolver();
