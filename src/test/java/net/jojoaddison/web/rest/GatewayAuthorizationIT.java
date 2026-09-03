@@ -211,6 +211,40 @@ class GatewayAuthorizationIT {
     }
 
     /**
+     * The readiness carve-out, on the cross-stack prefix. {@link #readinessIsOpenWithoutAToken()}
+     * asserts the same thing for {@code hcadminservice} and cannot cover this one: the carve-out is a
+     * wildcard over the service segment, but the two explicit professionalservice matchers are not,
+     * and if they were moved above it they would shadow it <em>for this prefix only</em>. The
+     * hcadminservice case would stay green throughout.
+     *
+     * <p>What that costs is specific: an orchestrator probes readiness without credentials, gets
+     * {@code 401}, and reports the route permanently unhealthy. Grouping every professionalservice
+     * rule together is the plausible tidy-up that does it.
+     */
+    @Test
+    void readinessOnTheProfessionalPrefixIsOpenWithoutAToken() {
+        expectAllowed(webTestClient.get().uri("/services/professionalservice/management/health/readiness").exchange());
+    }
+
+    /**
+     * The api-docs carve-out, on the cross-stack prefix, and the mirror of
+     * {@link #apiDocsThroughTheGatewayAreAdminOnly()}. The operator case is the one that matters: the
+     * carve-out is admin-only while the professionalservice {@code GET} rule admits an operator, so
+     * moving those matchers above it opens another product's API description to every operator in the
+     * estate — and opens it silently, because nothing else asserts this prefix against this path.
+     *
+     * <p>These two cases catch <b>misplacement</b>, not deletion. Deleting the explicit rules changes
+     * no decision at all, here or anywhere a request can reach; {@code SecurityConfigurationOrderTest}
+     * is what covers that.
+     */
+    @Test
+    void apiDocsForTheProfessionalStackAreAdminOnly() {
+        expectAllowed(get("/services/professionalservice/v3/api-docs", admin()));
+        expectRefused(get("/services/professionalservice/v3/api-docs", operator()));
+        expectRefused(get("/services/professionalservice/v3/api-docs", plainUser()));
+    }
+
+    /**
      * <b>The rule that must not be widened.</b> This gateway's own authentication surface lives under
      * {@code /api/**}, so a cross-stack matcher written as {@code /api/**} — or a route predicate
      * written that way — would proxy sign-in itself to another product. These three paths are the
