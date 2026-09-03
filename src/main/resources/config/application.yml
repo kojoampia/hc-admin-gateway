@@ -219,6 +219,19 @@ spring:
     enabled: false
   messages:
     basename: i18n/messages
+    # Every catalogue in src/main/resources/i18n is UTF-8, and this says so rather than inheriting it.
+    #
+    # It is Boot's own default (MessageSourceProperties sets StandardCharsets.UTF_8 in its
+    # constructor), so this line changes no behaviour today. It is here because the alternative is a
+    # contract nothing states: messages_de.properties was ISO-8859-1 while messages_fr.properties was
+    # UTF-8, nothing declared either, and the four German values carrying "ü" or "ß" reached real
+    # mailboxes as replacement characters — email.reset.title is a subject line. The Java-8-era
+    # instinct that a properties file is ISO-8859-1 is the contract of Properties.load(InputStream),
+    # which is not what loads these.
+    #
+    # Note the decoder is lenient either way: a catalogue added in the wrong encoding still yields
+    # U+FFFD rather than an error. MessageCatalogueEncodingTest is what actually fails on it.
+    encoding: UTF-8
   main:
     allow-bean-definition-overriding: true
   webflux:

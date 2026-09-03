@@ -53,10 +53,15 @@ class BrandTermsTest {
 
     /**
      * Every catalogue is read as ISO-8859-1, which is {@link Properties#load(InputStream)}'s contract
-     * and is not a claim about the files: {@code messages_de.properties} is ISO-8859-1 and
-     * {@code messages_fr.properties} is UTF-8. It does not matter here because every denied term is
-     * pure ASCII, and the two encodings agree on ASCII — a mis-decoded umlaut cannot hide or invent a
-     * match.
+     * and is not a claim about the files — all four are UTF-8, and
+     * {@link MessageCatalogueEncodingTest} is what enforces that. It does not matter here because
+     * every denied term is pure ASCII, and the two encodings agree on ASCII: a mis-decoded umlaut can
+     * neither hide nor invent a match.
+     *
+     * <p>This said "{@code messages_de.properties} is ISO-8859-1 and {@code messages_fr.properties} is
+     * UTF-8" until 2026-09-03, which was true when it was written and is backlog item 12. The German
+     * file was converted; this loader was deliberately left alone, because the reasoning above never
+     * depended on which encoding the files were in.
      */
     private static final List<Denied> DENIED = List.of(
         new Denied("Health Connect", Pattern.compile("Health\\s+Connect"), "Abofonsa BridgeCare"),
