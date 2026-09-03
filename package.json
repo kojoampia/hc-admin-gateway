@@ -36,8 +36,8 @@
     "java:war:dev": "npm run java:war -- -Pdev,webapp",
     "java:war:prod": "npm run java:war -- -Pprod",
     "prepare": "husky",
-    "prettier:check": "prettier --check \"{,src/**/,.blueprint/**/}*.{md,json,yml,html,java}\"",
-    "prettier:format": "prettier --write \"{,src/**/,.blueprint/**/}*.{md,json,yml,html,java}\"",
+    "prettier:check": "prettier --check \"{,**/}*.{md,json,yml,html,java}\"",
+    "prettier:format": "prettier --write \"{,**/}*.{md,json,yml,html,java}\"",
     "services:up": "docker compose -f src/main/docker/services.yml up --wait"
   },
   "config": {
