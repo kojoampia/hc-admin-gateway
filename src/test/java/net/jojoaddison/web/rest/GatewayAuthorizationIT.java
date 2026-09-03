@@ -46,6 +46,13 @@ class GatewayAuthorizationIT {
     private static final String SERVICE_GET = "/services/hcadminservice/api/professionals";
     private static final String SERVICE_WRITE = "/services/hcadminservice/api/professionals";
 
+    /**
+     * The cross-stack prefix — proxied to hc-professional-service, not to our own api. The rule
+     * guarding it is written out explicitly in {@code SecurityConfiguration} rather than left to the
+     * blanket {@code /services/**} rules, and these cases are what stop the two drifting apart.
+     */
+    private static final String PROFESSIONAL_GET = "/services/professionalservice/api/professionals";
+
     @Autowired
     private WebTestClient webTestClient;
 
@@ -158,6 +165,110 @@ class GatewayAuthorizationIT {
     void theRestOfAServicesManagementSurfaceIsNotOpen() {
         webTestClient.get().uri("/services/hcadminservice/management/env").exchange().expectStatus().isUnauthorized();
         expectRefused(get("/services/hcadminservice/management/env", plainUser()));
+    }
+
+    // --- the cross-stack prefix ---------------------------------------------------------------
+
+    /**
+     * The same read/write split applies to another product's service as to our own. Written as its
+     * own cases rather than trusted to the blanket rules: the blanket rules exist to mirror
+     * <em>hc-admin-service</em>'s split, so a future change that follows that service would move them
+     * — and would take the cross-stack prefix with it unless something pins it separately.
+     */
+    @Test
+    void anAdminMayReachTheProfessionalStackThroughTheGateway() {
+        expectAllowed(get(PROFESSIONAL_GET, admin()));
+    }
+
+    @Test
+    void anOperatorMayReadTheProfessionalStackButNotWriteToIt() {
+        expectAllowed(get(PROFESSIONAL_GET, operator()));
+        expectRefused(webTestClient.post().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(operator())).exchange());
+        expectRefused(webTestClient.put().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(operator())).exchange());
+        expectRefused(webTestClient.patch().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(operator())).exchange());
+        expectRefused(webTestClient.delete().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(operator())).exchange());
+    }
+
+    /**
+     * {@code .authenticated()} is the rule this must never become. Every account in the estate holds
+     * {@code ROLE_USER}, and all three stacks share one signing key — so authentication alone would
+     * hand the whole professional surface to every token in the network.
+     */
+    @Test
+    void aPlainUserMayNotReachTheProfessionalStack() {
+        expectRefused(get(PROFESSIONAL_GET, plainUser()));
+        expectRefused(webTestClient.post().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(plainUser())).exchange());
+    }
+
+    @Test
+    void aTokenWithNoAuthoritiesMayNotReachTheProfessionalStack() {
+        expectRefused(get(PROFESSIONAL_GET, noAuthorities()));
+    }
+
+    @Test
+    void anonymousMayNotReachTheProfessionalStack() {
+        webTestClient.get().uri(PROFESSIONAL_GET).exchange().expectStatus().isUnauthorized();
+    }
+
+    /**
+     * The readiness carve-out, on the cross-stack prefix. {@link #readinessIsOpenWithoutAToken()}
+     * asserts the same thing for {@code hcadminservice} and cannot cover this one: the carve-out is a
+     * wildcard over the service segment, but the two explicit professionalservice matchers are not,
+     * and if they were moved above it they would shadow it <em>for this prefix only</em>. The
+     * hcadminservice case would stay green throughout.
+     *
+     * <p>What that costs is specific: an orchestrator probes readiness without credentials, gets
+     * {@code 401}, and reports the route permanently unhealthy. Grouping every professionalservice
+     * rule together is the plausible tidy-up that does it.
+     */
+    @Test
+    void readinessOnTheProfessionalPrefixIsOpenWithoutAToken() {
+        expectAllowed(webTestClient.get().uri("/services/professionalservice/management/health/readiness").exchange());
+    }
+
+    /**
+     * The api-docs carve-out, on the cross-stack prefix, and the mirror of
+     * {@link #apiDocsThroughTheGatewayAreAdminOnly()}. The operator case is the one that matters: the
+     * carve-out is admin-only while the professionalservice {@code GET} rule admits an operator, so
+     * moving those matchers above it opens another product's API description to every operator in the
+     * estate — and opens it silently, because nothing else asserts this prefix against this path.
+     *
+     * <p>These two cases catch <b>misplacement</b>, not deletion. Deleting the explicit rules changes
+     * no decision at all, here or anywhere a request can reach; {@code SecurityConfigurationOrderTest}
+     * is what covers that.
+     */
+    @Test
+    void apiDocsForTheProfessionalStackAreAdminOnly() {
+        expectAllowed(get("/services/professionalservice/v3/api-docs", admin()));
+        expectRefused(get("/services/professionalservice/v3/api-docs", operator()));
+        expectRefused(get("/services/professionalservice/v3/api-docs", plainUser()));
+    }
+
+    /**
+     * <b>The rule that must not be widened.</b> This gateway's own authentication surface lives under
+     * {@code /api/**}, so a cross-stack matcher written as {@code /api/**} — or a route predicate
+     * written that way — would proxy sign-in itself to another product. These three paths are the
+     * ones that would be lost first, and they must keep answering here.
+     */
+    @Test
+    void theCrossStackRuleDoesNotReachThisGatewaysOwnApi() {
+        // permitAll on this gateway, and it stays that way — not swallowed by a /services/** rule.
+        expectAllowed(webTestClient.post().uri("/api/authenticate").exchange());
+        // Authenticated here, and reachable by a plain user, which nothing under /services/** is.
+        expectAllowed(get("/api/account", plainUser()));
+        // Admin-only here — refused for an operator, where the blanket /services/** GET rule admits one.
+        expectRefused(get("/api/admin/users", operator()));
+    }
+
+    /**
+     * The control the probe pair needs. A prefix with no route behind it must be refused by the same
+     * rules and never quietly permitted — otherwise "403 for an operator" stops proving anything,
+     * because a missing route and a guarded one would look alike.
+     */
+    @Test
+    void anUnroutedServicePrefixIsGovernedByTheSameRules() {
+        expectRefused(get("/services/nosuchservice/api/anything", plainUser()));
+        webTestClient.get().uri("/services/nosuchservice/api/anything").exchange().expectStatus().isUnauthorized();
     }
 
     // --- helpers ----------------------------------------------------------------------------
