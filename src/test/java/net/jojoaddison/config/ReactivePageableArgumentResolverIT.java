@@ -39,14 +39,18 @@ import reactor.core.publisher.Mono;
  * produced an unsorted, default {@code Pageable}. This class asserts the bound values themselves, which is what makes
  * the deletion falsifiable.
  *
- * <p><b>Verified by inversion, and the two beans are not symmetrical.</b> Removing the pageable bean fails
- * {@code bindsPageSizeAndSortFromTheQuery}, {@code bindsPageableDefaultsWhenTheQueryIsEmpty} and
- * {@code aBoundSortIsWhatTheUserEndpointValidates}, and both pre-existing ITs with them — with {@code 500}, not a
- * silently-unpaged {@code 200}. Removing the sort bean fails only {@code bindsASortArgument}: the three
- * {@code Pageable} cases still pass, and that is neither Boot supplying the resolver nor this test missing the code
- * path — it is that {@link ReactivePageableHandlerMethodArgumentResolver}'s no-arg constructor builds its own sort
- * resolver rather than injecting the bean. So a bare {@code Sort} parameter is the only thing that reads the second
- * bean, and no endpoint takes one today. That is why it is asserted here and nowhere else.
+ * <p><b>Verified by inversion, and the two beans are not symmetrical.</b> Both counts below are out of a 120-test
+ * {@code clean verify} and both include {@code webConfigurerIsTheOnlySourceOfTheResolvers}, which reads the bean
+ * inventory and so goes red for either removal — count it on both sides or neither. Removing the <b>pageable</b> bean
+ * fails <b>four</b> of the five cases here — {@code bindsPageSizeAndSortFromTheQuery},
+ * {@code bindsPageableDefaultsWhenTheQueryIsEmpty}, {@code aBoundSortIsWhatTheUserEndpointValidates} and the inventory
+ * — plus both pre-existing ITs, six in all, and every one but the inventory fails with {@code 500} rather than a
+ * silently-unpaged {@code 200}. Removing the <b>sort</b> bean fails <b>two</b>: {@code bindsASortArgument} and the
+ * inventory, nothing else in the suite. The three {@code Pageable} cases still pass, and that is neither Boot
+ * supplying the resolver nor this test missing the code path — it is that
+ * {@link ReactivePageableHandlerMethodArgumentResolver}'s no-arg constructor builds its own sort resolver rather than
+ * injecting the bean. So a bare {@code Sort} parameter is the only thing that reads the second bean, and no endpoint
+ * takes one today. That is why it is asserted here and nowhere else.
  *
  * <p>The echo controller below exists because no shipping endpoint hands a {@code Pageable} back. It is a test fixture,
  * registered as a bean rather than component-scanned so it reaches no other context.
