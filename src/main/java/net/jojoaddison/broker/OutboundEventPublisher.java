@@ -12,11 +12,22 @@ import org.springframework.stereotype.Component;
  * The one place this gateway publishes to the broker, and the only class allowed to hold a
  * {@link StreamBridge}. {@code OutboundPublishingArchTest} enforces that second half.
  *
+ * <p><strong>Nothing calls it today, and that is deliberate rather than an oversight.</strong>
+ * Backlog item 40a deleted this gateway's only publisher — {@code AdminGatewayKafkaResource}, whose
+ * {@code /publish} wrote an arbitrary request parameter onto a binding that named no destination —
+ * along with every stream binding in {@code application.yml}. This class is kept as the seam the
+ * next publisher must go through, because the rule that matters is the ArchUnit one above it and
+ * that rule names this type: delete the class and the guard goes with it, leaving the next inline
+ * {@code streamBridge.send} on a Netty event loop unopposed. Adding a publisher back means adding a
+ * binding <em>with</em> a {@code destination} and deciding who may reach the endpoint that drives
+ * it — both of which 40a found missing.
+ *
  * <p><strong>Why it exists.</strong> Backlog item 39a was measured in hc-admin-service, where
  * {@code MessageService.send} called {@code streamBridge.send(...)} on the request thread and the
  * first {@code POST /api/messages/send} against a stack with no broker took <b>60.6s</b> — with the
- * row written, a 201 returned and nothing failing. {@code AdminGatewayKafkaResource} was checked
- * rather than assumed and has the same shape, on the same binding name.
+ * row written, a 201 returned and nothing failing. This gateway's own {@code AdminGatewayKafkaResource} was checked
+ * rather than assumed and had the same shape; it was deleted by item 40a, for the separate reason
+ * above.
  *
  * <p>The sixty seconds is <b>not</b> the publish. Once an output binding exists the Kafka producer
  * buffers and returns; it is the <em>creation</em> of the binding that is slow, and
@@ -68,7 +79,9 @@ public class OutboundEventPublisher {
      * {@code hc-admin-gateway-publish-} says what it is in a thread dump, where a shared elastic pool
      * would only say that something somewhere is blocked.
      *
-     * @param bindingName the binding as {@code application.yml} declares it, e.g. {@code binding-out-0}
+     * @param bindingName the binding as {@code application.yml} declares it. It must be declared there
+     *     and must carry a {@code destination}: an undeclared name is published to a topic named
+     *     after the binding, which succeeds and is read by nothing (item 40a)
      * @param payload the wire form, already serialised
      * @param subject what to name in the log if this never reaches the broker
      */

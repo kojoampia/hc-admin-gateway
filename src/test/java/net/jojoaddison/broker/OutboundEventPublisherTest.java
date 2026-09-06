@@ -44,7 +44,7 @@ class OutboundEventPublisherTest {
 
     @Test
     void handsTheSendToTheExecutorRatherThanRunningItOnTheCaller() {
-        publisher.publish("binding-out-0", "hello", "The message posted to /publish");
+        publisher.publish("some-out-0", "hello", "The message this test publishes");
 
         // The assertion that fails if the publish goes back onto the event loop. Nothing about it is
         // timing-dependent: the executor here has run nothing at all yet.
@@ -56,17 +56,17 @@ class OutboundEventPublisherTest {
     void sendsTheDeclaredBindingAndPayloadOnceTheExecutorRunsIt() {
         when(streamBridge.send(anyString(), anyString())).thenReturn(true);
 
-        publisher.publish("binding-out-0", "hello", "The message posted to /publish");
+        publisher.publish("some-out-0", "hello", "The message this test publishes");
         queued.forEach(Runnable::run);
 
-        verify(streamBridge).send("binding-out-0", "hello");
+        verify(streamBridge).send("some-out-0", "hello");
     }
 
     @Test
     void aFailedSendIsSwallowedOnThePublisherThread() {
         when(streamBridge.send(anyString(), anyString())).thenThrow(new IllegalStateException("no broker"));
 
-        publisher.publish("binding-out-0", "hello", "The message posted to /publish");
+        publisher.publish("some-out-0", "hello", "The message this test publishes");
 
         assertThatCode(() -> queued.forEach(Runnable::run)).doesNotThrowAnyException();
     }
@@ -79,7 +79,7 @@ class OutboundEventPublisherTest {
         OutboundEventPublisher publisherOnAFullQueue = new OutboundEventPublisher(streamBridge, full);
 
         assertThatCode(
-            () -> publisherOnAFullQueue.publish("binding-out-0", "hello", "The message posted to /publish")
+            () -> publisherOnAFullQueue.publish("some-out-0", "hello", "The message this test publishes")
         ).doesNotThrowAnyException();
         verifyNoInteractions(streamBridge);
     }
