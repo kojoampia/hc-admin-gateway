@@ -41,24 +41,16 @@ spring:
       config:
         enabled: false
       enabled: false
+    # No stream functions and no bindings, matching the file that ships — see the reasoning in
+    # `src/main/resources/config/application.yml` (backlog item 40a). Keep the two in step: a
+    # binding declared only here is a binding the tests exercise and production does not have.
     function:
-      definition: kafkaConsumer;kafkaProducer
+      definition: ''
     stream:
       kafka:
         binder:
           replicationFactor: 1
           auto-create-topics: true
-      bindings:
-        binding-out-0:
-          content-type: text/plain
-          group: admin-gateway
-        kafkaConsumer-in-0:
-          destination: sse-topic
-          content-type: text/plain
-          group: admin-gateway
-        kafkaProducer-out-0:
-          content-type: text/plain
-          group: admin-gateway
   # No `jackson.serialization: {}` here. Spring Boot 4.1 moved to Jackson 3, whose
   # SerializationFeature lives in tools.jackson.databind, and the empty flow mapping binds as the
   # String "{}" rather than an empty Map — which fails the whole context with a

@@ -186,24 +186,40 @@ spring:
             pool:
               max-connections: 1000
     function:
-      definition: kafkaConsumer;kafkaProducer
+      # This gateway declares no stream functions, and the emptiness is a decision (backlog item
+      # 40a). It carried three bindings and a REST surface over them — `POST/GET
+      # /api/admin-gateway-kafka/{publish,consume}` — and every one of them was JHipster scaffolding
+      # that no client in the estate ever called.
+      #
+      # `binding-out-0` had no `destination`, so it published to a topic named after the binding
+      # while `kafkaConsumer-in-0` read `sse-topic`: producer and consumer in one file pointed at
+      # different topics, the send succeeded, and nothing ever read it. hc-admin-service fixed the
+      # identical bug by supplying the destination (its #40), and copying that here was the obvious
+      # move and the wrong one. `/publish` took an arbitrary string from a request parameter and sat
+      # under the blanket `/api/** -> authenticated()` rule, so giving the binding `sse-topic` would
+      # have let any authenticated caller — `ROLE_USER` included — inject text onto the channel the
+      # api relays real domain events on. The missing destination was accidentally protective. The
+      # api's own binding is not comparable: it also carries `messageSentEvent`, a real relay.
+      #
+      # `kafkaConsumer-in-0` went for the mirror-image reason, and it was the live cost rather than
+      # the latent one. `KafkaConsumer` emitted into `Sinks.many().unicast().onBackpressureBuffer()`
+      # — unbounded, and buffering until a subscriber arrives. `/consume` was the only subscriber
+      # and nothing called it, so this gateway read every message the api published to `sse-topic`
+      # and held all of them on the heap for the life of the process. Production takes this file's
+      # value (`prod-server/compose.yml` sets no override), so that was running.
+      #
+      # If the console ever grows an SSE client, CLAUDE.md already points it at the api's bridge —
+      # `/api/hc-admin-service-kafka/register`, read with `fetch` — not at this one. Adding a
+      # publisher back means adding a binding WITH a destination and deciding who may reach it;
+      # `OutboundEventPublisher` is deliberately kept as the seam for that, and
+      # `OutboundPublishingArchTest` still forbids anything else from holding a `StreamBridge`.
+      definition: ''
     stream:
       kafka:
         binder:
           replicationFactor: 1
           auto-create-topics: true
           brokers: localhost:9092
-      bindings:
-        binding-out-0:
-          content-type: text/plain
-          group: admin-gateway
-        kafkaConsumer-in-0:
-          destination: sse-topic
-          content-type: text/plain
-          group: admin-gateway
-        kafkaProducer-out-0:
-          content-type: text/plain
-          group: admin-gateway
   profiles:
     # The commented value for `active` can be replaced with valid Spring profiles to load.
     # Otherwise, it will be filled in by maven when building the JAR file

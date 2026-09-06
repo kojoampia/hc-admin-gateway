@@ -10,6 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.PropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.io.FileSystemResource;
@@ -83,6 +84,55 @@ class ConfigurationBindingTest {
     }
 
     /**
+     * <b>A stream binding without a {@code destination} publishes into a topic nothing reads.</b>
+     *
+     * <p>This is backlog item 40a, and it is stated as a rule rather than as the current state so it
+     * stays useful. Spring Cloud Stream does not require {@code destination}: given a binding without
+     * one it publishes to a topic named after the <em>binding</em>, so {@code binding-out-0} wrote to
+     * a topic literally called {@code binding-out-0} while {@code kafkaConsumer-in-0} read
+     * {@code sse-topic}. Producer and consumer sat four lines apart in one file, pointed at different
+     * topics. The send succeeded, a 204 came back, the topic was created, and nothing ever read it —
+     * there is no failure anywhere in that sequence, which is why it survived in both this repository
+     * and hc-admin-service until somebody went looking.
+     *
+     * <p>This gateway declares no bindings at all today: item 40a deleted them with the REST surface
+     * that drove them. So this currently asserts over an empty set, and that is deliberate — an
+     * assertion that the set <em>is</em> empty would have to be deleted by the next person who adds a
+     * publisher legitimately, and a guard that the next change deletes is not a guard. This one
+     * greets them instead.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = { "config/application.yml", "config/application-dev.yml", "config/application-prod.yml" })
+    void everyDeclaredStreamBindingCarriesADestination(String resource) throws IOException {
+        String prefix = "spring.cloud.stream.bindings.";
+
+        for (PropertySource<?> source : sourcesFor(resource)) {
+            if (!(source instanceof EnumerablePropertySource<?> enumerable)) {
+                continue;
+            }
+            for (String name : enumerable.getPropertyNames()) {
+                if (!name.startsWith(prefix)) {
+                    continue;
+                }
+                String binding = name.substring(prefix.length()).split("\\.", 2)[0];
+                Object destination = enumerable.getProperty(prefix + binding + ".destination");
+
+                assertThat(destination)
+                    .as(
+                        "%s declares the stream binding `%s` with no `destination`. Spring publishes that to a " +
+                        "topic named after the binding, the send succeeds, and nothing reads it (backlog item 40a).",
+                        resource,
+                        binding
+                    )
+                    .isNotNull();
+                assertThat(String.valueOf(destination).trim())
+                    .as("%s declares `%s.destination` as blank, which is the same defect one step along", resource, binding)
+                    .isNotEmpty();
+            }
+        }
+    }
+
+    /**
      * Read from {@code src/main/resources} on disk, NOT from the classpath.
      *
      * <p>This is the difference between a guard and a decoration. Under surefire,
@@ -93,12 +143,17 @@ class ConfigurationBindingTest {
      * config is already exercised by every other test in the suite; this one exists solely for the
      * file that is not.
      */
-    private Binder binderFor(String resource) throws IOException {
+    private List<PropertySource<?>> sourcesFor(String resource) throws IOException {
         FileSystemResource file = new FileSystemResource("src/main/resources/" + resource);
         assertThat(file.exists()).as("%s should exist under src/main/resources", resource).isTrue();
 
         List<PropertySource<?>> sources = loader.load(resource, file);
         assertThat(sources).as("%s should parse", resource).isNotEmpty();
+        return sources;
+    }
+
+    private Binder binderFor(String resource) throws IOException {
+        List<PropertySource<?>> sources = sourcesFor(resource);
 
         StandardEnvironment environment = new StandardEnvironment();
         for (PropertySource<?> source : sources) {
