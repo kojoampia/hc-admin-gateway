@@ -4,10 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import net.jojoaddison.broker.KafkaConsumer;
+import net.jojoaddison.broker.OutboundEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.http.HttpStatus;
@@ -25,7 +29,17 @@ class AdminGatewayKafkaResourceTest {
 
     private final StreamBridge streamBridge = mock(StreamBridge.class);
     private final KafkaConsumer kafkaConsumer = new KafkaConsumer();
-    private final AdminGatewayKafkaResource resource = new AdminGatewayKafkaResource(streamBridge, kafkaConsumer);
+
+    /**
+     * Records the publisher's tasks without running them, which is what lets the case below assert
+     * that the response does not wait for the broker — see {@code OutboundEventPublisherTest}.
+     */
+    private final List<Runnable> queued = new ArrayList<>();
+
+    private final AdminGatewayKafkaResource resource = new AdminGatewayKafkaResource(
+        new OutboundEventPublisher(streamBridge, queued::add),
+        kafkaConsumer
+    );
 
     /**
      * The binding name is asserted literally, not just "something was sent".
@@ -34,15 +48,23 @@ class AdminGatewayKafkaResourceTest {
      * {@code application.yml} is not a compile error — it is a message published to a binding
      * nothing consumes, with a successful {@code 204} returned to the caller. The api hit exactly
      * this: hc-admin-service#40 was "Give binding-out-0 the destination it was missing".
+     *
+     * <p>The 204 is now asserted <b>before</b> the send has run at all, which is the second thing this
+     * case pins: since 2026-09-06 the handler hands the publish to an executor rather than doing it on
+     * the event loop, because creating the output binding against an unreachable broker blocks for up
+     * to a minute there (backlog item 39a).
      */
     @Test
-    void publishesToTheBindingTheConfigurationDeclares() {
+    void publishesToTheBindingTheConfigurationDeclaresWithoutWaitingForIt() {
         when(streamBridge.send(eq("binding-out-0"), eq("hello"))).thenReturn(true);
 
         var response = resource.publish("hello").block(Duration.ofSeconds(5));
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        verifyNoInteractions(streamBridge);
+
+        queued.forEach(Runnable::run);
         verify(streamBridge).send("binding-out-0", "hello");
     }
 
