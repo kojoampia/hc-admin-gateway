@@ -1,0 +1,112 @@
+# Reconciles `main` against GHCR and says so, out loud, when a commit whose Release ran has no image.
+#
+# --- Why this exists --------------------------------------------------------------------------------
+#
+# Nothing did. A failed or cancelled Release raised no alert of any kind: no notification step in
+# release.yml, no branch protection depending on it, and nothing reconciling `main` against the
+# registry. The evidence is how the defect was found — eleven commits with no image, the oldest from
+# 2026-08-11, all discovered by hand on 2026-09-06 while doing something else, and the two most
+# recent were consecutive pull requests that nobody mentioned anywhere. (backlog item 44.)
+#
+# GitHub does email the actor when a run fails. That is the mechanism that already existed and it is
+# the one that did not work, so this deliberately does not add another of the same kind. An email is
+# an event: it is read once or not at all, it goes to one person, and its absence proves nothing. An
+# open issue is a state — it persists, it is attributable, it can be closed, and "is there an open
+# release-audit issue?" is a question with an answer.
+#
+# --- Why a reconciliation, and not `if: failure()` in release.yml ------------------------------------
+#
+# Because the obvious shape cannot see most of this. Measured: all 24 Release runs across the three
+# repos that ended `cancelled` have ZERO jobs, because a run cancelled while still pending never
+# creates one — so no step in that workflow, notification step included, ever executes. And two runs
+# have sat at status `queued` with a null conclusion since 2026-08-06, so anything keyed on a run
+# completing will never fire for them either. The full argument, with the API calls that establish
+# it, is in the header of .github/release-audit.sh.
+#
+# Note the consequence for THIS file's own `workflow_run` trigger: it is an accelerator, not the
+# mechanism. It may or may not fire for a run cancelled before it started, and it certainly does not
+# fire for one that never completes. The `schedule` is what makes the guarantee, and the script asks
+# the registry rather than the run, so neither trigger has to be trusted for the check to be sound.
+#
+# --- Failure modes, which are four and not two ---------------------------------------------------------
+#
+# exit 0 = every in-scope commit has an image or is accepted; any open audit issue is closed.
+# exit 1 = gaps found, issue filed or updated FIRST so the record outlives the red run.
+# exit 2 = the audit could not run or could not be trusted — a failed API read, an unresolvable
+#          origin/main, an ancestry filter that dropped every candidate, a registry that answered
+#          nothing readable, or a wrong image name. NEVER reported as gaps: any of those would
+#          otherwise present as "every commit on main is missing", an alarm large enough to read as
+#          broken tooling and be ignored, which ends where no alarm ends.
+# exit 3 = the sweep finished, found no gaps among the commits it could read, and could not read
+#          some of them. Distinct from 0 because "no gaps found" and "no gaps" are different claims;
+#          distinct from 1 because nothing here is evidence of a missing image. On a 3 the issue is
+#          left exactly as it was — not opened, not closed. Closing on a partial sweep is this
+#          item's own defect, one level up.
+name: Release audit
+
+on:
+  # The backstop, and the only trigger that carries the guarantee. Off-peak, and off the hour
+  # because GitHub's scheduler is heavily contended at :00.
+  schedule:
+    - cron: '23 6 * * *'
+
+  # After a Release, so a fresh gap is reported in minutes rather than up to a day. See the note
+  # above: this narrows the window, it does not define the coverage.
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+  workflow_dispatch:
+
+# A `permissions:` block sets every scope it does not name to `none`, so this list is exhaustive
+# rather than additive. `actions: read` is what the very first API call needs — the audit lists
+# Release runs through /repos/{repo}/actions/workflows/release.yml/runs — and its absence was not a
+# style point: without it that read is a 403 and the job dies before it has swept anything.
+# `issues: write` covers the label as well as the issue; the script creates the `release-audit`
+# label idempotently rather than assuming somebody made it by hand.
+permissions:
+  actions: read
+  contents: read
+  packages: read
+  issues: write
+
+concurrency:
+  group: release-audit-${{ github.repository }}
+  # The same setting as release.yml, and here it is genuinely harmless — which is worth stating,
+  # because the reasoning that makes it safe is exactly the reasoning that makes it lossy there.
+  # Dropping a pending Release loses an image for a specific commit, permanently. Dropping a pending
+  # audit loses nothing: the run that does survive measures the same registry and the same branch,
+  # and reports the same set. This job is idempotent; a release is not.
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Reconcile main against the registry
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is load-bearing. The audit calls `git merge-base --is-ancestor` to drop
+      # commits that are no longer on main — a shallow clone answers "not an ancestor" for
+      # everything it cannot see, which would silently shrink the swept set to nothing and report a
+      # clean bill of health. That is the failure this whole item is about, so it is not a
+      # default worth accepting.
+      #
+      # It is not the only defence, and it should not be: a setting in this file cannot protect a
+      # script run from anywhere else, and `--is-ancestor` cannot tell "not an ancestor" from
+      # "cannot resolve origin/main". The script proves the ref with `git rev-parse --verify` before
+      # it sweeps and refuses to report anything if the ancestry filter dropped every candidate.
+      - name: Check out, with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Reconcile
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # THE image name, set here and not derived. All three workflows set it explicitly and
+          # this is the only line that differs between them, which is what lets release-audit.sh
+          # stay byte-identical across the three repos. The script does carry a fallback default of
+          # the repository name — correct in all three, by a coincidence its header records — but
+          # nothing in CI ever reaches it: it is for running the script by hand.
+          IMAGE_NAME: hc-admin-gateway
+        run: bash .github/release-audit.sh

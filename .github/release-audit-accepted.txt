@@ -1,0 +1,28 @@
+# Commits whose Release ran, produced no image, and that we have decided to leave that way.
+#
+# .github/release-audit.sh reports every commit on main whose Release ran and left nothing in GHCR.
+# A commit listed here is excluded from that report. The point of the file is that accepting a gap
+# becomes a COMMIT — dated, reviewable, attributable — instead of a silence. Backlog item 44 exists
+# because eleven such gaps went a month with nobody knowing they had been accepted, since nobody had.
+#
+# Format: a commit, whitespace, then the reason. Anything after `#` is a comment. The commit may
+# be a full 40-character SHA or any prefix git can resolve, so the 12 characters the audit issue
+# renders as link text can be pasted straight in — every entry is expanded through `git rev-parse`
+# before it is used, and one that resolves to nothing is reported rather than silently accepting
+# nothing. A file with no trailing newline keeps its last entry.
+# The reason is the whole value of the file. "not needed" is not a reason; "superseded by <sha> the
+# same morning, never deployed, no rollback would ever target it" is.
+#
+# Before adding a line, know what the alternative costs. Re-running the original run rebuilds that
+# commit with that commit's workflow file:
+#
+#   gh run rerun <run-id> --repo kojoampia/hc-admin-gateway
+#
+# `gh workflow run release.yml --ref <sha>` is not an alternative — workflow_dispatch takes a branch
+# or a tag, never a commit SHA. And a rebuild today is not the image that would have shipped then:
+# release.yml checks the deployment repo out at its default branch with no `ref:`, so an August
+# commit rebuilt now is that application inside today's Dockerfile.
+#
+# THIS FILE IS DELIBERATELY EMPTY. The existing gaps are assessed in backlog.md item 44 and the
+# decision to backfill or accept them has not been taken — leaving it empty is what keeps that
+# decision owed rather than quietly resolved by a file nobody read.
