@@ -28,11 +28,20 @@
 # fire for one that never completes. The `schedule` is what makes the guarantee, and the script asks
 # the registry rather than the run, so neither trigger has to be trusted for the check to be sound.
 #
-# --- Failure mode ------------------------------------------------------------------------------------
+# --- Failure modes, which are four and not two ---------------------------------------------------------
 #
-# exit 1 = gaps found, issue filed or updated. exit 2 = the audit could not tell, which is NOT
-# reported as a gap: a wrong image name or a registry outage would otherwise present as "every
-# commit on main is missing", an alarm large enough to read as broken tooling and be ignored.
+# exit 0 = every in-scope commit has an image or is accepted; any open audit issue is closed.
+# exit 1 = gaps found, issue filed or updated FIRST so the record outlives the red run.
+# exit 2 = the audit could not run or could not be trusted — a failed API read, an unresolvable
+#          origin/main, an ancestry filter that dropped every candidate, a registry that answered
+#          nothing readable, or a wrong image name. NEVER reported as gaps: any of those would
+#          otherwise present as "every commit on main is missing", an alarm large enough to read as
+#          broken tooling and be ignored, which ends where no alarm ends.
+# exit 3 = the sweep finished, found no gaps among the commits it could read, and could not read
+#          some of them. Distinct from 0 because "no gaps found" and "no gaps" are different claims;
+#          distinct from 1 because nothing here is evidence of a missing image. On a 3 the issue is
+#          left exactly as it was — not opened, not closed. Closing on a partial sweep is this
+#          item's own defect, one level up.
 name: Release audit
 
 on:
@@ -49,7 +58,14 @@ on:
 
   workflow_dispatch:
 
+# A `permissions:` block sets every scope it does not name to `none`, so this list is exhaustive
+# rather than additive. `actions: read` is what the very first API call needs — the audit lists
+# Release runs through /repos/{repo}/actions/workflows/release.yml/runs — and its absence was not a
+# style point: without it that read is a 403 and the job dies before it has swept anything.
+# `issues: write` covers the label as well as the issue; the script creates the `release-audit`
+# label idempotently rather than assuming somebody made it by hand.
 permissions:
+  actions: read
   contents: read
   packages: read
   issues: write
@@ -73,6 +89,11 @@ jobs:
       # everything it cannot see, which would silently shrink the swept set to nothing and report a
       # clean bill of health. That is the failure this whole item is about, so it is not a
       # default worth accepting.
+      #
+      # It is not the only defence, and it should not be: a setting in this file cannot protect a
+      # script run from anywhere else, and `--is-ancestor` cannot tell "not an ancestor" from
+      # "cannot resolve origin/main". The script proves the ref with `git rev-parse --verify` before
+      # it sweeps and refuses to report anything if the ancestry filter dropped every candidate.
       - name: Check out, with history
         uses: actions/checkout@v4
         with:
@@ -82,8 +103,10 @@ jobs:
       - name: Reconcile
         env:
           GH_TOKEN: ${{ github.token }}
-          # Defaults to the repository name, which is correct in all three of these repos. Set it
-          # here if that ever stops being true; do not edit the script, which is kept identical
-          # across them.
+          # THE image name, set here and not derived. All three workflows set it explicitly and
+          # this is the only line that differs between them, which is what lets release-audit.sh
+          # stay byte-identical across the three repos. The script does carry a fallback default of
+          # the repository name — correct in all three, by a coincidence its header records — but
+          # nothing in CI ever reaches it: it is for running the script by hand.
           IMAGE_NAME: hc-admin-gateway
         run: bash .github/release-audit.sh

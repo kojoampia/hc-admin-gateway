@@ -5,7 +5,11 @@
 # becomes a COMMIT — dated, reviewable, attributable — instead of a silence. Backlog item 44 exists
 # because eleven such gaps went a month with nobody knowing they had been accepted, since nobody had.
 #
-# Format: one full 40-character SHA, whitespace, then the reason. Anything after `#` is a comment.
+# Format: a commit, whitespace, then the reason. Anything after `#` is a comment. The commit may
+# be a full 40-character SHA or any prefix git can resolve, so the 12 characters the audit issue
+# renders as link text can be pasted straight in — every entry is expanded through `git rev-parse`
+# before it is used, and one that resolves to nothing is reported rather than silently accepting
+# nothing. A file with no trailing newline keeps its last entry.
 # The reason is the whole value of the file. "not needed" is not a reason; "superseded by <sha> the
 # same morning, never deployed, no rollback would ever target it" is.
 #
