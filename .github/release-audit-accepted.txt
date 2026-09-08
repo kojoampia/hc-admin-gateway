@@ -23,6 +23,75 @@
 # release.yml checks the deployment repo out at its default branch with no `ref:`, so an August
 # commit rebuilt now is that application inside today's Dockerfile.
 #
-# THIS FILE IS DELIBERATELY EMPTY. The existing gaps are assessed in backlog.md item 44 and the
-# decision to backfill or accept them has not been taken — leaving it empty is what keeps that
-# decision owed rather than quietly resolved by a file nobody read.
+# ===================================================================================================
+# DECISION TAKEN 2026-09-08 — 13 accepted gaps here, 34 across the three repositories
+# ===================================================================================================
+#
+# This file shipped deliberately empty from 2026-09-07 (backlog.md item 44), because an empty accept
+# list is what keeps the decision owed rather than quietly resolved by a file nobody read. The
+# decision has now been taken and this is it. Item 44 assessed six sets and recommended: backfill 2,
+# accept 34. Those 34 are split across hc-admin-gateway (13), hc-admin-service (16) and
+# hc-admin-app (5); the 13 belonging to hc-admin-gateway are below, one line each, grouped by set
+# with the reasoning above each group. The other two repositories carry the same header and their
+# own entries — a set's reasoning is written out wherever any of its members land.
+#
+# THE OTHER TWO ARE NOT HERE AND MUST NOT BE ADDED. hc-admin-gateway's 10f66668 and 86e03c63 — the
+# two commits the 2026-09-03 HC_ADMIN_CI_TOKEN lapse left unbuilt — were the backfill half, and they
+# are already backfilled: runs 33788320175 and 33788679395 were re-run as attempt 2 and both
+# succeeded on 2026-09-07, and both SHAs now answer 200 from GHCR. They are rollback targets, not
+# accepted gaps, and putting either in this file would hide a real image behind a written excuse.
+#
+# The SHAs below were taken from .github/release-audit.sh's own sweep, run from a workstation with
+# the `gh issue`/`gh label` writes stubbed, and each one's set was decided from the Actions API's
+# record of its run rather than from any prose. Two things that record says and item 44's table does
+# not are noted in place below.
+#
+
+# --- 2026-08-05 · the run died before any step, and a re-run would die the same way (4 across two repos)
+#
+# Failed at "Set up job" on an unresolvable trivy-action pin. `gh run rerun` replays THAT COMMIT'S
+# workflow file, which still pins the deleted tag, so the re-run dies in exactly the same place
+# before a single step executes. The gap is not reachable without a new commit — and a new commit is
+# a different tree, which is a build of something else rather than a backfill of this.
+#
+92953dccd6e7e7caaa2bbdd2d6384baa64369d1f  failed at 'Set up job' on the trivy pin, 2026-08-05; a re-run replays the same pin — Remove self-registration, mirror the api's authorization split
+f3a5c5e764d8dd405fd42cf91222619721300eb1  failed at 'Set up job' on the trivy pin, 2026-08-05; a re-run replays the same pin — ci: pin trivy-action to v0.28.0 — the tag has a v prefix
+
+# --- Cancelled while still pending, superseded within seconds (24 across three repos)
+#
+# release.yml's concurrency group keeps ONE pending run, so a third arrival drops the one waiting.
+# Every commit in this set was cancelled 1-2 seconds after the NEXT run in the group was created,
+# and every one of these runs has zero jobs — the pairing is deterministic and is the mechanism, not
+# a person pressing cancel. Each is superseded by the commit that displaced it within seconds, so
+# the window in which anybody would want to roll back to one of them is a few seconds wide. That is
+# not a rollback target. The concurrency setting itself is unchanged on purpose: `true` drops
+# RUNNING builds instead of pending ones and is strictly worse, so the drop is accepted and detected.
+#
+# TWO CORRECTIONS TO ITEM 44'S TABLE, both measured here. It says 23; there are 24 (gateway 10,
+# service 13, app 1) — and 4 + 4 + 24 + 1 + 1 is the 34 the same table totals, so 23 was the
+# miscount. And it says all of them are dependabot bumps: 23 are, and hc-admin-app's 7d18d942
+# ("Merge pull request #60 from kojoampia/test/coverage-floor") is not. It has the same
+# cancelled-while-pending shape and the same seconds-wide supersession, so the reason to accept it
+# holds; the description of the set does not cover it.
+#
+61b95c5bc049ca21af2f052df1991f87aa438416  cancelled while pending 1s after run for 2115c2e7 was created; superseded, 2026-08-06 — chore(deps): bump org.springdoc:springdoc-openapi-bom (#13)
+2115c2e79e7d8c4fb12cdb6958cfe907057f3a54  cancelled while pending 1s after run for 0aafb535 was created; superseded, 2026-08-06 — chore(deps): bump com.puppycrawl.tools:checkstyle from 13.4.2 to 13.9.0 (#12)
+0aafb535b3538d4cfd7036403e5480333d26f0c6  cancelled while pending 1s after run for 583e549d was created; superseded, 2026-08-06 — chore(deps): bump org.apache.maven.plugins:maven-eclipse-plugin (#10)
+a48c01da7b2637e1d083b94013fef542dfe6ef04  cancelled while pending 1s after run for d378ebe4 was created; superseded, 2026-08-06 — chore(deps): bump docker/setup-buildx-action from 3 to 4 (#6)
+d378ebe480329c7a832be2271527b4337ec15de0  cancelled while pending 1s after run for f44f07a5 was created; superseded, 2026-08-06 — chore(deps-dev): bump prettier-plugin-java from 2.6.0 to 2.10.3 (#5)
+b3215112b8505e315f74710c185a5a7428f86bf4  cancelled while pending 1s after run for 83fc87b8 was created; superseded, 2026-08-11 — chore(deps-dev): bump org.apache.maven.plugins:maven-jar-plugin (#19)
+83fc87b8ceb878584c37e6583dd3015d5c83c057  cancelled while pending 1s after run for 0a12f516 was created; superseded, 2026-08-11 — chore(deps): bump org.apache.maven.plugins:maven-surefire-plugin (#20)
+0a12f516dd71626161005d861005963aef7bc4e1  cancelled while pending 1s after run for 2f2e989d was created; superseded, 2026-08-11 — chore(deps): bump org.jacoco:jacoco-maven-plugin from 0.8.14 to 0.8.15 (#21)
+2f2e989d16221f2bdc0125a73be462ede8b9c9ab  cancelled while pending 1s after run for a9cec033 was created; superseded, 2026-08-11 — chore(deps): bump com.diffplug.spotless:spotless-maven-plugin (#22)
+750b3dde58bc74770e591aa74d75e03e10d72224  cancelled while pending 1s after run for 18aff605 was created; superseded, 2026-08-22 — Merge pull request #30 from kojoampia/dependabot/maven/archunit-junit5.version-1.5.0
+
+# --- Stuck `queued` since 2026-08-06, and it has a usable image on the other registry (1)
+#
+# Attempt 2 of this run has sat at status `queued` with a null conclusion and zero jobs since
+# 2026-08-06 and will never complete — which is why the audit is a reconciliation against the
+# registry and not a `workflow_run: [completed]` handler. It is accepted because the rollback that
+# actually wants this commit does not go through GHCR: hc-admin-ci's TODO.md "Rolling back" table
+# carries `TAG=2906c62 ./deploy.sh --skip-build` as the all-three-services pre-cutover rollback, and
+# that runs on the `local` channel out of docker.jojoaddison.net, where the image exists.
+#
+2906c62c670ad5cb84cd04e757f8f379d439f4c4  run 31121545882 still 'queued' since 2026-08-06; the pre-cutover rollback uses its private-registry image — Remove the empty jhipster.security key that broke the prod deploy
