@@ -44,10 +44,20 @@ import org.springframework.stereotype.Component;
  * do with Kafka. This class hands the send to a dedicated executor and the loop is never held.
  *
  * <p><strong>What it costs.</strong> The sixty-second response was the only externally visible symptom
- * of an unreachable broker and this removes it; nothing replaces it, because
- * {@code MANAGEMENT_HEALTH_BINDERS_ENABLED=false} in every compose file that runs this gateway and
- * {@code management.prometheus.metrics.export.enabled} is {@code false} in {@code application-prod.yml}.
- * The {@code WARN} below is the whole of the visibility, exactly as it was before — backlog item 40.
+ * of an unreachable broker and this removes it; the {@code WARN} lines below are the whole of the
+ * visibility that replaces it. <b>That was settled as a decision on 2026-09-09 — backlog item 40c —
+ * and the argument lives in hc-admin-service's copy of this class, not here.</b> The short form:
+ * publishing stays log-only, because logs are proven to reach Loki on the production host (item 43)
+ * while a Micrometer counter would be registered against a composite with no delegate and read by
+ * nothing; and {@code MANAGEMENT_HEALTH_BINDERS_ENABLED=false} in every compose file is deliberate,
+ * since that indicator feeds the container healthcheck. The query is in
+ * {@code deploy/observability/alert-rules.yml}.
+ *
+ * <p><strong>Here that decision is currently vacuous, and a reader should know which half applies.</strong>
+ * Nothing in this gateway publishes, so neither {@code WARN} below can fire and no LogQL query will
+ * ever match {@code service_name="hc-admin-gateway"} for one. The decision binds the moment a
+ * publisher is added back: at that point the two message strings become the same contract they are
+ * next door, and the query in that file needs a second service name rather than a second rule.
  */
 @Component
 public class OutboundEventPublisher {
