@@ -38,8 +38,48 @@ name: CI
 on:
   push:
     branches: [main]
+
+  # --- No `branches:` filter here, and that is item 37 reopening an item 16 decision --------------
+  #
+  # `pull_request: branches:` matches the pull request's BASE. While this said `[main]`, a stacked
+  # pull request — one opened onto another feature branch — matched neither trigger and NO WORKFLOW
+  # RAN AT ALL. Measured in THIS repository, on PR #53 (base `chore/ci-probe-item-16`, head
+  # `c7ab8dfb`): zero check runs, zero workflow runs, `mergeable_state: clean`. GitHub renders that
+  # as an ABSENCE of checks, which is indistinguishable from a repository with no CI, so a reviewer
+  # approving that diff gets no signal that nothing tested it. hc-patient paid this for real on
+  # 2026-09-08: their api PR #39 reported CLEAN for days having run nothing.
+  #
+  # Item 16 rejected removing this filter on 2026-09-03, because "dropping the `branches` filter
+  # spends CI on drafts and spikes". Re-taken 2026-09-09 on measurement, because that cost is not
+  # what it sounds like — this filter is the ONLY thing removed, and `push:` above keeps its own:
+  #
+  #   - Spikes cost nothing. A branch with no pull request open triggers nothing here either way,
+  #     because CI runs on no feature-branch push. A spike that HAS a pull request open is a spike
+  #     under review, which is exactly the case this change exists to gate.
+  #   - Drafts already cost this. `pull_request` fires for a draft today; there is no draft filter in
+  #     this file and never has been. Removing a BASE filter changes nothing about them.
+  #   - The historical delta is one pull request. Of the 245 ever opened across hc-admin-service,
+  #     hc-admin-gateway and hc-admin-app, exactly ONE had a base other than `main` — the probe
+  #     above. Runs here are ~2 minutes and `concurrency` below collapses a push storm to one.
+  #
+  # DO NOT add `if: github.event.pull_request.draft == false` to the job below to "mitigate drafts".
+  # It reintroduces item 16's defect on `main`, in green rather than as an absence, and the mechanism
+  # is documented rather than suspected. A job skipped by an `if:` still reports a check run, with
+  # conclusion `skipped`; GitHub's rule is that required status checks "must have a successful,
+  # SKIPPED, or neutral status" to permit a merge. So `Build and test` — required by ruleset
+  # 22354480 — would be SATISFIED by a run that tested nothing. Marking the draft ready does not
+  # repair it: `ready_for_review` is not one of the default activity types (`opened`, `synchronize`,
+  # `reopened`), so no second run happens and the pull request becomes mergeable carrying the draft
+  # phase's skip. Anything of that shape needs `types:` widened in step, which is a second thing to
+  # keep correct for a cost measured at zero.
+  #
+  # WHAT THIS DOES NOT DO: the check now RUNS on a stacked pull request, it does not BLOCK one. The
+  # ruleset is scoped to `~DEFAULT_BRANCH`, so merging into a feature branch is still a push to an
+  # unprotected ref. Do not reach for `~ALL` to close that — item 37 explains at length why it is
+  # worse, and this change does not alter the reason: CI still runs on no feature-branch push, so a
+  # check required on every ref is a check that never reports on any of them.
   pull_request:
-    branches: [main]
+
   workflow_dispatch:
 
 concurrency:
