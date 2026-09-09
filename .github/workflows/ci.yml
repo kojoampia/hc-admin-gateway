@@ -17,8 +17,22 @@
 # --- Testcontainers --------------------------------------------------------------------------------
 #
 # ubuntu-latest runners ship a working Docker daemon, so `./mvnw verify` runs the *IT classes for
-# real. TestContainersSpringContextCustomizerFactory injects the Mongo replica-set URI, and Kafka
-# only starts for classes carrying @EmbeddedKafka — see src/test/resources/META-INF/spring.factories.
+# real. TestContainersSpringContextCustomizerFactory injects the Mongo replica-set URI — and that is
+# the ONLY container a run starts.
+#
+# This comment said "Kafka only starts for classes carrying @EmbeddedKafka" until 2026-09-09, which was
+# true as written and false as read: @IntegrationTest and @AuthenticationIntegrationTest were BOTH
+# annotated @EmbeddedKafka and the customizer resolves it with findMergedAnnotation, so all fifteen
+# context-booting classes started a broker — for a gateway that declares no stream functions and no
+# bindings in either profile (item 40a) and therefore never opens a client to one. Verified on a
+# baseline run: every org.apache.kafka line in the build came out of the container's own stdout.
+# Item 17 took the annotation off both composites; BrokerOptInArchTest now fails on any class that asks
+# for a container. See src/test/resources/META-INF/spring.factories.
+#
+# Worth knowing before reading a red run on THIS runner rather than on jacserver: the Mongo container
+# missing its start window is a jacserver contention problem, not a CI one. Checked across the whole
+# retained history on 2026-09-09 — 3 failed runs here, 5 on the api — and neither
+# ReplicaSetInitializationException nor the readiness timeout appears once.
 name: CI
 
 on:
