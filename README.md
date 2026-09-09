@@ -175,7 +175,7 @@ Run a single test class or method:
 Conventions:
 
 - Unit tests are `*Test.java`; integration tests are `*IT.java`. `SpringBootTestClassOrderer` runs plain unit tests before context-booting ones.
-- Testcontainers are wired through `src/test/resources/META-INF/spring.factories`: MongoDB is always provisioned, Kafka only for classes annotated `@EmbeddedKafka`. Docker must be running.
+- Testcontainers are wired through `src/test/resources/META-INF/spring.factories`: MongoDB is always provisioned, Kafka only for classes annotated `@EmbeddedKafka` — and nothing is, so no run starts a broker (`docs/backlog.md` item 17). Docker must be running.
 - `TechnicalStructureTest` enforces package-layer boundaries with ArchUnit — a new class in the wrong slice fails the build.
 - `JHipsterBlockHoundIntegration` detects blocking calls on reactive threads.
 

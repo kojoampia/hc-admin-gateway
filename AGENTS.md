@@ -121,7 +121,17 @@ If your local MongoDB requires authentication, `cp .env.local.example .env.local
 ### Test conventions
 
 - Unit tests `*Test.java`; integration tests `*IT.java`. `SpringBootTestClassOrderer` runs plain unit tests before context-booting ones.
-- `@IntegrationTest` boots the full reactive context. Testcontainers are wired through `src/test/resources/META-INF/spring.factories`: `TestContainersSpringContextCustomizerFactory` supplies the MongoDB replica-set URI, and `KafkaTestContainersSpringContextCustomizerFactory` only starts Kafka for classes annotated `@EmbeddedKafka`.
+- `@IntegrationTest` boots the full reactive context. Testcontainers are wired through `src/test/resources/META-INF/spring.factories`: `TestContainersSpringContextCustomizerFactory` supplies the MongoDB replica-set URI, and `KafkaTestContainersSpringContextCustomizerFactory` starts Kafka only for a class carrying `@EmbeddedKafka`.
+- **No Kafka container starts, and `BrokerOptInArchTest` fails on any class that asks for one.** `@EmbeddedKafka` sat on both `@IntegrationTest` and `@AuthenticationIntegrationTest` until 2026-09-09, so all fifteen context-booting classes started a broker — for a gateway that declares no stream functions and no bindings (item 40a) and therefore never opens a client to it. Verified on a baseline run: every `org.apache.kafka` line in the build came out of the container's own stdout. See `docs/backlog.md` item 17.
+
+#### When the whole suite goes red with one container
+
+**Many errors across unrelated classes, every one of them `ApplicationContext failure threshold (1) exceeded` under a merged-configuration dump, is not a regression.** It is one Mongo container missing its start window on a loaded machine; the container is created once per test JVM in a static field, so whichever class boots the first context absorbs the failure — which is why `TokenAuthenticationIT` and `TokenAuthenticationSecurityMetersIT` keep appearing in failure lists for changes that touch neither.
+
+`MongoDbTestContainer` retries three times, three seconds apart, discarding the container between attempts (a half-started one has a partly initialised replica set and restarting _that_ loops on `ReadConcernMajorityNotAvailableYet`). If all three fail it logs a banner naming the image, the load average and the window that was missed, then **stops trying for the rest of the run** so later classes fail in a second rather than minutes each. The same fixture, byte for byte, is in hc-admin-service; keep them in step.
+
+**Container reuse is the other lever and it is per-machine, not per-repository.** `.withReuse(true)` is silently ignored — `Reuse was requested but the environment does not support the reuse of containers` — until `testcontainers.reuse.enable=true` is in `~/.testcontainers.properties` or `TESTCONTAINERS_REUSE_ENABLE=true` is in the environment. Fast locally; leave it off in CI, where a reused container carries state between runs and is not reaped.
+
 - Seeding coverage lives in `src/test/java/net/jojoaddison/config/dbmigrations/InitialSetupMigrationTest.java`. It asserts the create/skip behaviour, the three stable ids, the derived passwords, and — as regression guards — that no collection is ever dropped and that existing authorities are reused. It replaced `DevelopmentUsersInitializerTest`, which referenced a class removed when seeding was consolidated.
 
 ## Security Considerations
@@ -151,7 +161,7 @@ If your local MongoDB requires authentication, `cp .env.local.example .env.local
 - **Apache Kafka** via Spring Cloud Stream
 - **SpringDoc OpenAPI** for API docs
 - **Maven** (`./mvnw`), Spotless, Checkstyle, jib for container images
-- **JUnit 5**, Mockito, AssertJ, Testcontainers (MongoDB, Kafka), ArchUnit, BlockHound
+- **JUnit 5**, Mockito, AssertJ, Testcontainers (MongoDB; the Kafka fixture is present and deliberately unused), ArchUnit, BlockHound
 - **Docker Compose** files under `src/main/docker/` for Consul, MongoDB, Kafka, Prometheus/Grafana, Zipkin, Sonar
 - **GitHub Actions** for CI
 
