@@ -85,6 +85,10 @@ public class MongoDbTestContainer implements InitializingBean, DisposableBean {
     private void discardContainer() {
         try {
             mongodbContainer.stop();
+            // RuntimeException and not Throwable, deliberately. An Error here — OutOfMemoryError is the
+            // realistic one on the saturated machine this path exists for — means the JVM is in no state
+            // to be building more containers, and swallowing it to carry on would turn the clearest
+            // possible failure into another container start. It propagates.
         } catch (RuntimeException e) {
             log.warn("Could not stop the MongoDB test container that failed to start; building a fresh one anyway.", e);
         }

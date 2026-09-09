@@ -40,6 +40,15 @@ import org.junit.jupiter.api.Test;
  * this item removed. That gap is named rather than left implied — the end-to-end path was verified by
  * hand once, on 2026-09-09 in hc-admin-service, by restoring {@code @EmbeddedKafka} to a single class
  * and watching a container start for that class and for no other.
+ *
+ * <p><b>One thing that is true here and not in hc-admin-service.</b> There, adding {@code @EmbeddedKafka}
+ * back to an {@code @IntegrationTest} class gets you a container that Spring Cloud Stream then ignores,
+ * because that composite imports the in-memory binder and it goes on servicing every binding. This
+ * gateway's composites import no binder, so the annotation really would put the Kafka binder in front
+ * of a real broker. Do not carry that repository's extra step — excluding
+ * {@code TestChannelBinderConfiguration} — over here. The class is on the test classpath (the pom keeps
+ * the dependency) but nothing imports it, so the exclusion would subtract something that was never
+ * added and read as though a binder had been dealt with when none was ever in the way.
  */
 @AnalyzeClasses(packagesOf = IntegrationTest.class)
 class BrokerOptInArchTest {

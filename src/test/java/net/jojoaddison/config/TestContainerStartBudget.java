@@ -106,6 +106,13 @@ final class TestContainerStartBudget {
         }
         spent = true;
         terminalFailure = lastFailure;
+        // The container from the *final* attempt is deliberately not discarded, and the review that
+        // spotted it was right that it lingers until Ryuk reaps it at JVM exit. Left alone anyway: this
+        // path only runs on a machine already too busy to start a container, the whole point of the
+        // latch below is that nothing else in this run will touch Docker, and stopping it means another
+        // round trip to a daemon that is the thing failing — on the one path where the goal is to fail
+        // fast and say why. Ryuk exists for exactly this and is running (it is the first container the
+        // baseline log reports starting).
         TestContainerUnavailableException failure = TestContainerUnavailableException.exhausted(image, attempts, lastFailure);
         // Logged as well as thrown. The throw reaches the reader four Caused-by levels down under a
         // merged-configuration dump; this reaches them in the build output, once, at the moment it happens.
