@@ -5,7 +5,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import net.jojoaddison.AdminGatewayApp;
-import net.jojoaddison.config.EmbeddedKafka;
 import net.jojoaddison.config.EmbeddedMongo;
 import net.jojoaddison.config.SecurityConfiguration;
 import net.jojoaddison.config.SecurityJwtConfiguration;
@@ -33,6 +32,11 @@ import org.springframework.context.annotation.Import;
     }
 )
 @EmbeddedMongo
-@EmbeddedKafka
+// No @EmbeddedKafka. It was here and on @IntegrationTest, and between them they started a Kafka
+// container for every class in this repository that boots a context — a broker this gateway never
+// contacts, because it declares no stream functions and no bindings (backlog items 40a and 17).
+// Two of the three classes this annotation is for — TokenAuthenticationIT and
+// TokenAuthenticationSecurityMetersIT — are exactly the ones a failed container start has kept naming
+// for changes that touch neither of them.
 public @interface AuthenticationIntegrationTest {
 }
