@@ -1,18 +1,26 @@
 package net.jojoaddison.web.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
+import java.util.Objects;
 import net.jojoaddison.IntegrationTest;
+import net.jojoaddison.domain.LoginAttempt;
+import net.jojoaddison.domain.LoginOutcome;
 import net.jojoaddison.domain.User;
 import net.jojoaddison.repository.UserRepository;
 import net.jojoaddison.web.rest.vm.LoginVM;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -210,5 +218,92 @@ class AuthenticateControllerIT {
             .expectBody()
             .jsonPath("$.id_token")
             .doesNotExist();
+    }
+
+    // --- the authentication record (backlog item 75) --------------------------------------------
+
+    /**
+     * <b>A failed sign-in is written down, and until backlog item 75 nothing anywhere recorded one.</b>
+     *
+     * <p>Not a counter: measured before that item, {@code AuthenticateController} referenced
+     * {@code SecurityMetersService} zero times, and that class counts JWT <em>token-validation</em>
+     * failures — {@code invalid-signature}, {@code expired}, {@code unsupported}, {@code malformed} —
+     * of which a wrong password is none. This gateway persisted exactly {@code User} and
+     * {@code Authority}. So a wrong password left no trace on this stack in any form, which is the
+     * defect this case exists to keep closed.
+     *
+     * <p>Driven end to end through the HTTP endpoint rather than against
+     * {@code LoginAttemptRecorder}: the recorder's own unit test asserts what it stores, and what this
+     * asserts is that a real refusal reaches it at all. The failure arrives as an <em>error signal</em>
+     * on the way to {@code ExceptionTranslator}, so it is hooked with {@code doOnError} and not a
+     * {@code catch} — a hook written the natural way records nothing and looks entirely correct.
+     */
+    @Test
+    void aFailedSignInIsRecordedWithTheLoginThatWasTried() throws Exception {
+        String tried = "item-75-no-such-account";
+        postCredentials(tried, "definitely wrong").expectStatus().isUnauthorized();
+
+        LoginAttempt recorded = awaitAttemptFor(tried);
+        assertThat(recorded.getOutcome()).isEqualTo(LoginOutcome.FAILED);
+        assertThat(recorded.getLogin()).isEqualTo(tried);
+    }
+
+    /**
+     * And a successful one, so the two are distinguishable in the store.
+     *
+     * <p>The success row is not decoration. A failure count with no denominator answers nothing —
+     * twenty failures is an ordinary afternoon on a busy console and an incident on a quiet one — and
+     * this is also the row that says whether whoever was guessing eventually got in.
+     */
+    @Test
+    void aSuccessfulSignInIsRecordedAsSuccessAndNotAsAFailure() throws Exception {
+        User user = new User();
+        user.setLogin("item-75-good-account");
+        user.setEmail("item-75-good-account@example.com");
+        user.setActivated(true);
+        user.setPassword(passwordEncoder.encode("test"));
+        userRepository.save(user).block();
+
+        postCredentials("item-75-good-account", "test").expectStatus().isOk();
+
+        LoginAttempt recorded = awaitAttemptFor("item-75-good-account");
+        assertThat(recorded.getOutcome()).isEqualTo(LoginOutcome.SUCCEEDED);
+    }
+
+    // The other half of the recording contract — that a store which refuses the write does not break
+    // signing in — is LoginRecordFailureIT rather than a case here. It needs the repository bean
+    // replaced, and @MockitoBean is a property of the context: doing it in this class would replace it
+    // for the two cases above too, which read the real collection and would then assert nothing.
+
+    @Autowired
+    private ReactiveMongoTemplate mongoTemplate;
+
+    private WebTestClient.ResponseSpec postCredentials(String username, String password) throws Exception {
+        LoginVM login = new LoginVM();
+        login.setUsername(username);
+        login.setPassword(password);
+        return webTestClient
+            .post()
+            .uri("/api/authenticate")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(om.writeValueAsBytes(login))
+            .exchange();
+    }
+
+    /**
+     * The row for one login, waited for rather than read immediately.
+     *
+     * <p>The write is deliberately not on the response's path — that is the whole design — so it is
+     * genuinely not there yet when the {@code 200} or the {@code 401} arrives. Polling is the honest
+     * assertion of "eventually recorded"; a bare read would be a race that passes on a fast machine
+     * and reports a missing security signal on a loaded one.
+     */
+    private LoginAttempt awaitAttemptFor(String login) {
+        return await()
+            .atMost(Duration.ofSeconds(10))
+            .until(
+                () -> mongoTemplate.find(Query.query(Criteria.where("login").is(login)), LoginAttempt.class).blockFirst(),
+                Objects::nonNull
+            );
     }
 }
