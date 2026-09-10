@@ -83,6 +83,25 @@ public class SecurityConfiguration {
                     .pathMatchers("/api/account/reset-password/init").permitAll()
                     .pathMatchers("/api/account/reset-password/finish").permitAll()
                     .pathMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
+                    // --- the authentication record --------------------------------------------------
+                    //
+                    // /api/auth-activity is ADMIN ALONE, which is NARROWER than everything else this
+                    // console reads — an operator reaches the whole entity surface of the api,
+                    // patient contact addresses included, and is refused here.
+                    //
+                    // That is backlog item 75's first safeguard rather than a preference. The response
+                    // carries `topFailedLogins`: logins AS THEY WERE ENTERED, which on a failure are by
+                    // definition mostly not the account holder — an attacker's guesses, a typo, or a
+                    // password pasted into the wrong box. LoginAttempt's javadoc argues in full why
+                    // that value is stored at all and what carries the exception to item 43's rule;
+                    // this line is one of the four things carrying it.
+                    //
+                    // It MUST sit above the blanket /api/** rule. Below it, `authenticated()` decides
+                    // first — and every account in the estate holds ROLE_USER while all three gateways
+                    // share one signing key, so "authenticated" here means every token in the network.
+                    // SecurityConfigurationOrderTest pins the position; AuthActivityResourceIT pins the
+                    // decision for an admin, an operator, a plain user and an anonymous caller.
+                    .pathMatchers("/api/auth-activity/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .pathMatchers("/api/**").authenticated()
                     .pathMatchers("/services/*/management/health/readiness").permitAll()
                     .pathMatchers("/services/*/v3/api-docs").hasAuthority(AuthoritiesConstants.ADMIN)

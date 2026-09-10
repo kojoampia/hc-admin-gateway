@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import net.jojoaddison.JavaSourceText;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -54,6 +55,11 @@ class SecurityConfigurationOrderTest {
     private static final String READINESS = "/services/*/management/health/readiness";
     private static final String API_DOCS = "/services/*/v3/api-docs";
     private static final String BLANKET = "/services/**";
+
+    /** Backlog item 75 — admin-only, and above the rule below it. */
+    private static final String AUTH_ACTIVITY = "/api/auth-activity/**";
+
+    private static final String BLANKET_API = "/api/**";
 
     /**
      * An absent rule has no position, and reporting that as a position sends the reader looking for a
@@ -208,5 +214,183 @@ class SecurityConfigurationOrderTest {
                 BLANKET
             )
             .isLessThan(blanket);
+    }
+
+    // --- the authentication record (backlog item 75) --------------------------------------------
+
+    /**
+     * <strong>{@code /api/auth-activity} is stated, and it is admin-only.</strong>
+     *
+     * <p>Unlike the cross-stack rules above, deleting this one <em>is</em> observable — the blanket
+     * {@code /api/**} matcher below it says {@code authenticated()}, so {@code AuthActivityResourceIT}
+     * would go red for an operator and a plain user. This case is not redundant with it: it reads the
+     * authority as well as the position, so a rule widened <em>in place</em> —
+     * {@code hasAnyAuthority(ADMIN, OPERATOR)}, which is the shape every other read on this console
+     * has — is caught here too rather than by one assertion in one file.
+     *
+     * <p>Why it is admin-alone is {@code LoginAttempt}'s first safeguard: the response names logins
+     * exactly as they were entered.
+     */
+    @Test
+    void theAuthenticationRecordIsStatedAndIsAdminOnly() throws IOException {
+        String rule = ruleFor(AUTH_ACTIVITY);
+
+        assertThat(rule)
+            .as(
+                "SecurityConfiguration no longer states %s. It is ROLE_ADMIN alone — narrower than every " +
+                "other read on this console — because the response carries logins as they were entered " +
+                "(LoginAttempt's first safeguard). Without the rule the blanket /api/** matcher decides " +
+                "it, and that says authenticated(), which across three gateways sharing one signing key " +
+                "means every token in the estate.",
+                AUTH_ACTIVITY
+            )
+            .isNotNull();
+
+        assertThat(rule)
+            .as(
+                "%s is no longer ROLE_ADMIN alone. An operator reads the whole entity surface of " +
+                "hc-admin-service and is deliberately refused here.",
+                AUTH_ACTIVITY
+            )
+            .contains("hasAuthority(AuthoritiesConstants.ADMIN)")
+            .doesNotContain("hasAnyAuthority");
+    }
+
+    /**
+     * <strong>Above the blanket {@code /api/**} rule.</strong> Below it the explicit rule is never
+     * evaluated and the endpoint is reachable by any authenticated caller — which is not a smaller
+     * version of the intended rule, it is its opposite.
+     */
+    @Test
+    void theAuthenticationRecordSitsAboveTheBlanketApiRule() throws IOException {
+        List<String> matchers = matchersInOrder();
+        int authActivity = indexOf(matchers, AUTH_ACTIVITY);
+        int blanketApi = indexOf(matchers, BLANKET_API);
+
+        assertThat(authActivity).as(ABSENT_NOT_MISPLACED, AUTH_ACTIVITY).isGreaterThan(-1);
+        assertThat(blanketApi).as("the blanket %s rule is gone — this ordering cannot be checked", BLANKET_API).isGreaterThan(-1);
+
+        assertThat(authActivity)
+            .as(
+                "%s is now BELOW the blanket %s rule, so authenticated() decides it first and the " +
+                "admin-only rule is dead code that reads as a guarantee. Every account in the estate " +
+                "holds ROLE_USER.",
+                AUTH_ACTIVITY,
+                BLANKET_API
+            )
+            .isLessThan(blanketApi);
+    }
+
+    /**
+     * The whole {@code .pathMatchers("<path>")…} chain up to the next {@code .pathMatchers}, or null
+     * when the path is not stated at all.
+     *
+     * <p>Needed because {@link #matchersInOrder()} captures only the argument list, and the question
+     * here is what authority follows it.
+     *
+     * <h2>⚠ Read over comment-stripped, whitespace-collapsed source, and it failed BOTH ways without
+     * that</h2>
+     *
+     * <p>It used to read the file raw, which is wrong in two opposite directions at once:
+     *
+     * <ul>
+     *   <li><b>Fail-open.</b> A comment quoting the full matcher — this file's own habit, and the
+     *       block above the professionalservice rules quotes every path string in
+     *       {@code SecurityConfiguration} — sits above the real rule. Raw {@code indexOf} finds the
+     *       comment first and grades <em>it</em>, so a real rule widened to
+     *       {@code hasAnyAuthority(ADMIN, OPERATOR)} underneath a comment still saying
+     *       {@code hasAuthority(...ADMIN)} would pass.</li>
+     *   <li><b>Fail-closed, and this one is reachable today.</b> A purely cosmetic four-line wrap of
+     *       {@code hasAuthority(AuthoritiesConstants.ADMIN)} — identical semantics, still admin-only —
+     *       turns the guard red claiming the rule "is no longer ROLE_ADMIN alone", which is simply
+     *       false. Prettier formats Java in this repository and backlog item 66 records that the
+     *       committed Java does not match the pinned Prettier, so that false alarm is not
+     *       hypothetical. A guard that cries wolf on a reformat is a guard somebody deletes.</li>
+     * </ul>
+     *
+     * <p>{@code // prettier-ignore} on the {@code authorizeExchange} block is what has kept the second
+     * case from firing so far. That is a comment one tidy-up away from being removed, and it is not a
+     * reason to depend on formatting.
+     *
+     * <p>Stripping and collapsing is also what lets the path be found at all when the matcher itself
+     * is wrapped: {@code .pathMatchers(\n    "/api/auth-activity/**"\n)} contains no
+     * {@code .pathMatchers("/api/auth-activity/**")} to {@code indexOf}, so the raw form would have
+     * reported the rule <em>missing</em> rather than misformatted.
+     *
+     * <p>{@link net.jojoaddison.JavaSourceText} does the stripping — the same lexer
+     * {@code LoginAttemptNeverLoggedTest} uses, shared rather than copied because a second one is a
+     * second thing to drift.
+     */
+    private static String ruleFor(String path) throws IOException {
+        return ruleIn(Files.readString(SOURCE, StandardCharsets.UTF_8), path);
+    }
+
+    /**
+     * The reading itself, over any source — so the two cases below grade the rule's own reader rather
+     * than a second copy written beside it. That convention is why this is split at all.
+     */
+    private static String ruleIn(String rawSource, String path) {
+        String source = JavaSourceText.collapseWhitespace(JavaSourceText.withoutComments(rawSource));
+        int start = source.indexOf(".pathMatchers(\"" + path + "\")");
+        if (start < 0) {
+            return null;
+        }
+        int next = source.indexOf(".pathMatchers(", start + 1);
+        return next < 0 ? source.substring(start) : source.substring(start, next);
+    }
+
+    /**
+     * <b>A cosmetic reformat must not change the verdict.</b> The fail-closed half.
+     *
+     * <p>Identical semantics, wrapped across four lines the way a formatter would. Before the
+     * stripping this returned a rule the assertion could not match and the guard cried
+     * "no longer ROLE_ADMIN alone" about a rule that was exactly that — and worse, the wrapped
+     * {@code .pathMatchers(...)} could not be located at all, so it reported the rule missing.
+     */
+    @Test
+    void aCosmeticReformatDoesNotChangeWhatTheRuleSays() {
+        String wrapped =
+            """
+            authorizeExchange(authz -> authz
+                .pathMatchers(
+                    "/api/auth-activity/**"
+                )
+                    .hasAuthority(
+                        AuthoritiesConstants.ADMIN
+                    )
+                .pathMatchers("/api/**").authenticated()
+            );
+            """;
+
+        assertThat(ruleIn(wrapped, AUTH_ACTIVITY))
+            .as("a wrapped matcher must still be found and still read as admin-only")
+            .isNotNull()
+            .contains("hasAuthority(AuthoritiesConstants.ADMIN)")
+            .doesNotContain("hasAnyAuthority");
+    }
+
+    /**
+     * <b>A comment quoting the matcher must not be graded as the matcher.</b> The fail-open half, and
+     * the more dangerous one.
+     *
+     * <p>This file's own habit is to quote every path string in prose above the rules, so the comment
+     * comes first in the file. Reading raw text, {@code indexOf} finds the quotation and grades it —
+     * so a real rule widened underneath a comment that still says the old thing would pass, which is
+     * the exact shape of regression this class exists to catch.
+     */
+    @Test
+    void aCommentQuotingTheMatcherIsNotGradedAsTheMatcher() {
+        String quoted =
+            """
+            authorizeExchange(authz -> authz
+                // It stays .pathMatchers("/api/auth-activity/**").hasAuthority(AuthoritiesConstants.ADMIN) forever.
+                .pathMatchers("/api/auth-activity/**").hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.OPERATOR)
+                .pathMatchers("/api/**").authenticated()
+            );
+            """;
+
+        assertThat(ruleIn(quoted, AUTH_ACTIVITY))
+            .as("the real rule has been widened to admit an operator, and the comment above it must not hide that")
+            .contains("hasAnyAuthority");
     }
 }

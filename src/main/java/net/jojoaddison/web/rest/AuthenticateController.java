@@ -10,7 +10,9 @@ import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.stream.Collectors;
+import net.jojoaddison.domain.LoginOutcome;
 import net.jojoaddison.security.Account;
+import net.jojoaddison.service.LoginAttemptRecorder;
 import net.jojoaddison.web.rest.vm.LoginVM;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,20 +51,66 @@ public class AuthenticateController {
 
     private final ReactiveAuthenticationManager authenticationManager;
 
-    public AuthenticateController(JwtEncoder jwtEncoder, ReactiveAuthenticationManager authenticationManager) {
+    private final LoginAttemptRecorder loginAttemptRecorder;
+
+    public AuthenticateController(
+        JwtEncoder jwtEncoder,
+        ReactiveAuthenticationManager authenticationManager,
+        LoginAttemptRecorder loginAttemptRecorder
+    ) {
         this.jwtEncoder = jwtEncoder;
         this.authenticationManager = authenticationManager;
+        this.loginAttemptRecorder = loginAttemptRecorder;
     }
 
+    /**
+     * {@code POST /authenticate} : issue a token, and write down that it was asked for.
+     *
+     * <h2>⚠ Where the recording is attached, and why it is there and not somewhere tidier</h2>
+     *
+     * <p>Until backlog item 75 <b>a failed login left no trace on this stack at all</b> — not in a
+     * counter, not in a collection. {@code SecurityMetersService} counts JWT token-validation
+     * failures and a wrong password is none of them; this controller referenced it nowhere.
+     *
+     * <p>Three properties of the code below are load-bearing:
+     *
+     * <ul>
+     *   <li><b>The entered login is captured inside the first {@code flatMap}.</b> That lambda is the
+     *       only scope in this method where {@code LoginVM} exists — a failure propagates from here
+     *       as an error signal carrying a {@code BadCredentialsException}, which knows the principal
+     *       but is not the thing to read it from, and the outer operators see no request body at all.
+     *       So both hooks are attached <em>inside</em> that lambda, where they can close over the
+     *       login this request sent, rather than on the outer chain where it is out of scope.</li>
+     *   <li><b>The failure hook is {@code doOnError}, not a {@code catch}.</b> Nothing here throws;
+     *       an unknown login, a wrong password and a deactivated account all arrive as an error
+     *       signal on the way to {@code ExceptionTranslator}. A {@code try}/{@code catch} around this
+     *       expression would record nothing and would look correct.</li>
+     *   <li><b>Neither hook can change the response.</b> {@code doOnNext} and {@code doOnError} are
+     *       side effects on a signal that continues unaltered, and
+     *       {@link LoginAttemptRecorder#record} subscribes its own write and returns — so a MongoDB
+     *       that is slow or down cannot make a working login hang and cannot make one fail. That is
+     *       argued at length on the recorder, including why failing closed was rejected, and
+     *       {@code LoginRecordFailureIT} induces it. The rule is the one
+     *       {@code broker/OutboundEventPublisher} exists for, one package away: <b>a blocking or
+     *       failing side effect here runs on a Netty event loop shared by every request on it.</b></li>
+     * </ul>
+     *
+     * <p>Both outcomes are recorded, not just the failure. A failure count with no denominator
+     * answers nothing — twenty failures is a bad afternoon on a busy console and an incident on a
+     * quiet one — and the success row is also what says whether whoever was guessing eventually got
+     * in.
+     */
     @PostMapping("/authenticate")
     public Mono<ResponseEntity<JWTToken>> authorize(@Valid @RequestBody Mono<LoginVM> loginVM) {
         return loginVM
-            .flatMap(
-                login ->
-                    authenticationManager
-                        .authenticate(new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPassword()))
-                        .flatMap(auth -> Mono.fromCallable(() -> this.createToken(auth, login.isRememberMe())))
-            )
+            .flatMap(login -> {
+                String enteredLogin = login.getUsername();
+                return authenticationManager
+                    .authenticate(new UsernamePasswordAuthenticationToken(enteredLogin, login.getPassword()))
+                    .flatMap(auth -> Mono.fromCallable(() -> this.createToken(auth, login.isRememberMe())))
+                    .doOnNext(issued -> loginAttemptRecorder.record(enteredLogin, LoginOutcome.SUCCEEDED))
+                    .doOnError(refused -> loginAttemptRecorder.record(enteredLogin, LoginOutcome.FAILED));
+            })
             .map(jwt -> {
                 HttpHeaders httpHeaders = new HttpHeaders();
                 httpHeaders.setBearerAuth(jwt);
