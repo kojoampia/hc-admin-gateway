@@ -86,6 +86,118 @@
 #
 set -euo pipefail
 
+# ===================================================================================================
+# WHY EXIT 1 IS GUARDED, AND WHY THE GUARD IS A TRAP RATHER THAN A HELPER
+# ===================================================================================================
+#
+# Exit 1 means one thing in the table above: gaps were found, and THE ISSUE WAS FILED FIRST. It is
+# also what `set -euo pipefail` returns for every unhandled failure — a typo, an unset variable, a
+# full disk, a missing binary, a redirection to a path that does not exist. So without this, the
+# DEFAULT outcome of any future accident in this file is an alarm asserting that commits on main have
+# no image, raised on the one channel built to be believed, by a run that wrote nothing at all. The
+# direction is the dangerous one: a false alarm is how a channel stops being read, which is the state
+# backlog item 44 describes and the state this script exists to end.
+#
+# Three instances were found, each by a different route, and the third is why this is a trap:
+#
+#   * `body_file="$(mktemp)"` — a full or unwritable TMPDIR aborts the gap path with status 1, having
+#     filed nothing and printed no message at all. Measured: exit 1.
+#   * `: "${GITHUB_REPOSITORY:?…}"` — `${var:?}` aborts a non-interactive shell with status 1, so a
+#     workflow missing an environment variable reported gaps. Measured: exit 1.
+#   * the ordinary redirections to `$GITHUB_STEP_SUMMARY` — NOT `exit` statements at all, merely
+#     commands under `set -e`. An unwritable summary turned a GREEN run into exit 1. Measured.
+#
+# The first two are `exit`-shaped, and were closed one at a time IN gate-audit.sh — a file that lives
+# in hc-admin-app and that two of this file's three repositories do not contain at all. IN THIS FILE
+# BOTH STILL STAND AS WRITTEN: the `${var:?}` at the GITHUB_REPOSITORY check below, and the bare
+# `body_file="$(mktemp)"` on the gap path. That is deliberate, not an omission — the trap rewrites
+# their exit 1 to 2, which is the outcome that matters, and rewriting the lines as well would be two
+# further edits to keep byte-identical across three repositories for no change in behaviour. Do not
+# read this paragraph as a claim that they are fixed here; read it as the reason they need not be.
+#
+# The third is not reachable by any
+# grep over `exit` or `:?`, because it is not an exit statement: THE SET OF COMMANDS THAT CAN FAIL IS
+# NOT GREPPABLE. The class cannot be closed instance by instance, and a fourth will be written by
+# somebody who has not read this comment.
+#
+# A shared `die_cannot_run` helper was the first thing proposed and is REJECTED, because it would have
+# caught NONE of the three: mktemp was not a call to it, `${var:?}` was not a call to it, and a
+# redirection is not a call to anything. A helper only fires where somebody remembered to call it — it
+# makes remembering easier, it does not make forgetting safe, and forgetting is what produced all
+# three.
+#
+# So the DEFAULT is made safe rather than the exceptions enumerated. REPORTED_RED is set on the line
+# before the one deliberate `exit 1`; every OTHER status-1 exit is rewritten to 2 — could not run, or
+# could not be trusted — which is the outcome that leaves the issue exactly as it was rather than
+# lying about it. No documented exit code changes: the deliberate 1 stays 1, and 0, 2 and 3 pass
+# through untouched.
+#
+# Four things about the implementation are measured rather than assumed, and three of them were got
+# wrong on the first attempt:
+#
+#   * `$LINENO` inside a trap names a line in THE TRAP — it reads the same number whatever failed — so
+#     no line number is printed here. A guard against a lying alarm is the wrong place to invent a
+#     precision it does not have. `$BASH_COMMAND` is printed instead. It is captured early, but
+#     POSITION IS NOT WHAT PROTECTS IT and an earlier capture would buy nothing: bash FREEZES
+#     `$BASH_COMMAND` for the duration of trap execution, and reading it after several intervening
+#     commands returns the identical value — measured, after this comment first claimed the opposite.
+#     It is an APPROXIMATE locator rather than an exact
+#     one — which is said where it is printed rather than left for a reader to discover. It holds the
+#     last command bash recorded: for a failing pipeline that is the pipeline's last element, and for
+#     a failing redirection on a compound command — `{ … } >>"$summary_file"`, the very shape that
+#     produced instance three — it is the statement BEFORE the group. Bash's own diagnostic carries
+#     the real line number and is printed immediately above this message when there is one, so the
+#     two together locate the failure; either alone can mislead.
+#   * `set +e` is the first ACTION the trap takes — the two `local` builtins above it are commands
+#     too, and neither can fail — because a trap that can itself fail is this whole defect one level
+#     in. Without it, a run whose stderr was closed died inside the trap's own printf and exited
+#     **1** — the guard becoming the accident. Measured before and after.
+#   * Returning from the trap WITHOUT calling `exit` preserves the status that triggered it, which is
+#     what makes 0, 2 and 3 transparent. Verified for each of the three rather than reasoned about.
+#   * Traps are not inherited by command-substitution subshells, so must()'s `exit 2` inside `$(…)`
+#     still ends only the subshell and still reaches this shell as a status. This does not disturb the
+#     command-substitution rule above, and does not double any message.
+#
+# It is installed immediately after `set -euo pipefail`, before any configuration is read, so that the
+# window in which an accident is still exit 1 is as close to empty as a shell allows — the
+# GITHUB_REPOSITORY check below is inside the guarded region, not outside it, which is what turns that
+# instance from a reported gap into a reported misconfiguration without rewriting the line.
+#
+# IT COVERS STATUS 1 ONLY, and that limit is deliberate: 1 is the code carrying two meanings, while 2
+# and 3 already mean "could not run" and "partial sweep, issue left alone". The residual is that an
+# accidental status-3 abort would masquerade as a documented partial sweep. Nothing here can produce
+# one today — no command here that can fail with a status OTHER than 1 escapes must() or an explicit
+# guard — so it is accepted rather than guarded. That claim is deliberately narrower than "every
+# substitution is guarded", which is what an earlier draft of this paragraph asserted and which does
+# NOT hold in release-audit.sh: two bare substitutions remain there, named where they occur, and both
+# fail with status 1 — already covered by the rewrite. If a command that can exit 3 is ever added
+# unguarded, widen this.
+#
+# The same guard, with the same reasoning, is in hc-admin-app's gate-audit.sh. Change one, look at the
+# other — and this file is byte-identical in three repositories, so changing it is changing all three.
+#
+REPORTED_RED=''
+
+on_exit() {
+  local status="$1"
+  local failed="${BASH_COMMAND:-}"
+  set +e
+  [ "$status" -eq 1 ] || return 0
+  [ -z "$REPORTED_RED" ] || return 0
+  printf '%s\n%s\n%s\n%s\n' \
+    'release-audit: FAILED — aborted on an unhandled error, having filed NOTHING.' \
+    'release-audit: exiting 2 (could not run, or could not be trusted) rather than 1, which this file' \
+    "release-audit: defines as \"gaps found, issue filed first\" and which would be a false alarm." \
+    "release-audit: the command that failed was: ${failed:-(unknown)}" >&2
+  printf '%s\n' \
+    'release-audit: (That is an approximate locator, not an exact one: $LINENO inside a trap names the' \
+    'release-audit: trap, and the command above is the last one bash recorded — for a redirection on a' \
+    'release-audit: compound command, the statement before it. Bash'"'"'s own diagnostic, printed above' \
+    'release-audit: this if there is one, carries the real line number.)' >&2
+  exit 2
+}
+trap 'on_exit $?' EXIT
+
 # --- Configuration ---------------------------------------------------------------------------------
 
 REGISTRY="${REGISTRY:-ghcr.io}"
@@ -119,7 +231,11 @@ REPO="${GITHUB_REPOSITORY##*/}"
 
 # GHCR rejects an upper-case path component and an account's registered case is not guaranteed, so
 # it is folded rather than assumed — the same reason release.yml folds it. `printf | tr` over a
-# value that is already in hand has no failure mode; it is the one bare substitution here.
+# value that is already in hand has no failure mode, so it is left bare. It is NOT the only bare
+# substitution in this file — `body_file="$(mktemp)"` on the gap path is another, and unlike this one
+# it genuinely can fail. That clause said "the one bare substitution here" and was already wrong when
+# it was written; the EXIT trap at the top of the file is what keeps the mktemp from reporting a
+# broken TMPDIR as a page of missing images.
 OWNER_LC="$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')"
 
 # ALL THREE WORKFLOWS SET IMAGE_NAME EXPLICITLY, so this default is a fallback for running the
@@ -556,6 +672,20 @@ else
   gh issue create --repo "$GITHUB_REPOSITORY" --title "$ISSUE_TITLE" --label "$ISSUE_LABEL" \
     --body-file "$body_file" >/dev/null
 fi
+
+# REPORTED_RED is what tells the EXIT trap that THIS 1 is the documented one and not an accident, and
+# it is set HERE — the first statement after the filing block closes — rather than on the line before
+# the exit. The note below is a command like any other: with stderr gone it fails, `set -e` aborts,
+# and the trap would report that this run filed NOTHING having just filed the issue. That window was
+# one command wide and it is the exact inversion this guard exists to prevent, so the flag goes above
+# the reporting rather than below it.
+#
+# This is still NOT "set it at the top of the gap path", which remains the wrong answer for the reason
+# it always was: that placement would also cover an abort BETWEEN deciding there are gaps and filing
+# the issue — "reported red, reported nothing" — which must stay exit 2. The line between the two is
+# whether FILING HAS ALREADY SUCCEEDED. Above this point it has not, and an abort is a 2; below it,
+# everything left is reporting, and a failure there does not make the issue stop existing.
+REPORTED_RED=yes
 
 # Non-zero so the run itself is red as well. The issue is the durable half — it survives the run,
 # it can be closed, and its ABSENCE is checkable — but a red run is what makes the Actions tab agree
