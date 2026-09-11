@@ -15,15 +15,13 @@ import org.springframework.context.annotation.Import;
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@Import(
-    {
-        WebConfigurer.class,
-        SecurityConfiguration.class,
-        SecurityJwtConfiguration.class,
-        SecurityMetersService.class,
-        JwtAuthenticationTestUtils.class,
-    }
-)
+@Import({
+    WebConfigurer.class,
+    SecurityConfiguration.class,
+    SecurityJwtConfiguration.class,
+    SecurityMetersService.class,
+    JwtAuthenticationTestUtils.class,
+})
 @SpringBootTest(
     classes = AdminGatewayApp.class,
     properties = {
@@ -38,5 +36,4 @@ import org.springframework.context.annotation.Import;
 // Two of the three classes this annotation is for — TokenAuthenticationIT and
 // TokenAuthenticationSecurityMetersIT — are exactly the ones a failed container start has kept naming
 // for changes that touch neither of them.
-public @interface AuthenticationIntegrationTest {
-}
+public @interface AuthenticationIntegrationTest {}

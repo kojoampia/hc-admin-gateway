@@ -70,16 +70,14 @@ class ConfigurationBindingTest {
     void jhipsterSecurityIsNeverAnEmptyValue() throws IOException {
         for (String resource : List.of("config/application.yml", "config/application-dev.yml", "config/application-prod.yml")) {
             Binder binder = binderFor(resource);
-            binder
-                .bind("jhipster.security", String.class)
-                .ifBound(value -> {
-                    throw new AssertionError(
-                        resource +
+            binder.bind("jhipster.security", String.class).ifBound(value -> {
+                throw new AssertionError(
+                    resource +
                         " binds jhipster.security to the String \"" +
                         value +
                         "\". It is an object: an empty `security:` key here fails the whole application at startup."
-                    );
-                });
+                );
+            });
         }
     }
 
@@ -120,7 +118,7 @@ class ConfigurationBindingTest {
                 assertThat(destination)
                     .as(
                         "%s declares the stream binding `%s` with no `destination`. Spring publishes that to a " +
-                        "topic named after the binding, the send succeeds, and nothing reads it (backlog item 40a).",
+                            "topic named after the binding, the send succeeds, and nothing reads it (backlog item 40a).",
                         resource,
                         binding
                     )

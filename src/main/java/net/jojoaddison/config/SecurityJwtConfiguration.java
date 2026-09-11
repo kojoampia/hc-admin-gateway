@@ -34,22 +34,20 @@ public class SecurityJwtConfiguration {
         NimbusReactiveJwtDecoder jwtDecoder = NimbusReactiveJwtDecoder.withSecretKey(getSecretKey()).macAlgorithm(JWT_ALGORITHM).build();
         return token -> {
             try {
-                return jwtDecoder
-                    .decode(token)
-                    .doOnError(e -> {
-                        if (e.getMessage().contains("Jwt expired at")) {
-                            metersService.trackTokenExpired();
-                        } else if (e.getMessage().contains("Failed to validate the token")) {
-                            metersService.trackTokenInvalidSignature();
-                        } else if (
-                            e.getMessage().contains("Invalid JWT serialization:") ||
-                            e.getMessage().contains("Invalid unsecured/JWS/JWE header:")
-                        ) {
-                            metersService.trackTokenMalformed();
-                        } else {
-                            log.error("Unknown JWT reactive error {}", e.getMessage());
-                        }
-                    });
+                return jwtDecoder.decode(token).doOnError(e -> {
+                    if (e.getMessage().contains("Jwt expired at")) {
+                        metersService.trackTokenExpired();
+                    } else if (e.getMessage().contains("Failed to validate the token")) {
+                        metersService.trackTokenInvalidSignature();
+                    } else if (
+                        e.getMessage().contains("Invalid JWT serialization:") ||
+                        e.getMessage().contains("Invalid unsecured/JWS/JWE header:")
+                    ) {
+                        metersService.trackTokenMalformed();
+                    } else {
+                        log.error("Unknown JWT reactive error {}", e.getMessage());
+                    }
+                });
             } catch (Exception e) {
                 if (e.getMessage().contains("An error occurred while attempting to decode the Jwt")) {
                     metersService.trackTokenMalformed();

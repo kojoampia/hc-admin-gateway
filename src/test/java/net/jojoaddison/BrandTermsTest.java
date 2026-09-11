@@ -84,12 +84,12 @@ class BrandTermsTest {
     void findsEveryCatalogueThatShips() throws IOException {
         // Asserted rather than filtered. A moved or renamed catalogue silently dropping out of
         // coverage is the same failure as not checking it at all, and this test would still pass.
-        assertThat(catalogues().map(path -> path.getFileName().toString()).sorted().toList()).containsExactly(
-            "messages.properties",
-            "messages_de.properties",
-            "messages_en.properties",
-            "messages_fr.properties"
-        );
+        assertThat(
+            catalogues()
+                .map(path -> path.getFileName().toString())
+                .sorted()
+                .toList()
+        ).containsExactly("messages.properties", "messages_de.properties", "messages_en.properties", "messages_fr.properties");
     }
 
     @Test
@@ -118,11 +118,14 @@ class BrandTermsTest {
         // next hardcoded line of copy goes into one of these files, not into a catalogue.
         Map<Path, String> templates = templates();
 
-        assertThat(templates.keySet().stream().map(path -> path.getFileName().toString()).sorted().toList()).contains(
-            "activationEmail.html",
-            "creationEmail.html",
-            "passwordResetEmail.html"
-        );
+        assertThat(
+            templates
+                .keySet()
+                .stream()
+                .map(path -> path.getFileName().toString())
+                .sorted()
+                .toList()
+        ).contains("activationEmail.html", "creationEmail.html", "passwordResetEmail.html");
 
         List<String> offences = templates
             .entrySet()

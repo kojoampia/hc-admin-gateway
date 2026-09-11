@@ -42,21 +42,21 @@ public class TestContainerUnavailableException extends IllegalStateException {
     static TestContainerUnavailableException exhausted(String image, int attempts, Throwable cause) {
         return new TestContainerUnavailableException(
             "The " +
-            image +
-            " test container did not start in " +
-            attempts +
-            " attempts, and no integration test in this run can boot a context without it. This is " +
-            "almost never a defect in the code under test: " +
-            machineLoad() +
-            " at the moment of the failure. Testcontainers waits sixty seconds for the image to log " +
-            "that it is ready and then gives a single-node replica set six seconds to elect a primary " +
-            "(AWAIT_INIT_REPLICA_SET_ATTEMPTS = 60 attempts 100 ms apart, a private constant with no " +
-            "property behind it), and a saturated machine misses one or both. Every remaining test " +
-            "class in this run will now fail immediately with this same diagnosis rather than spend " +
-            "the same minutes rediscovering it. Re-run on a quiet box; setting " +
-            "testcontainers.reuse.enable=true in ~/.testcontainers.properties keeps a started " +
-            "container between runs and largely stops this happening. Read docs/backlog.md item 17 " +
-            "before looking for a regression. The container's own failure is attached as the cause.",
+                image +
+                " test container did not start in " +
+                attempts +
+                " attempts, and no integration test in this run can boot a context without it. This is " +
+                "almost never a defect in the code under test: " +
+                machineLoad() +
+                " at the moment of the failure. Testcontainers waits sixty seconds for the image to log " +
+                "that it is ready and then gives a single-node replica set six seconds to elect a primary " +
+                "(AWAIT_INIT_REPLICA_SET_ATTEMPTS = 60 attempts 100 ms apart, a private constant with no " +
+                "property behind it), and a saturated machine misses one or both. Every remaining test " +
+                "class in this run will now fail immediately with this same diagnosis rather than spend " +
+                "the same minutes rediscovering it. Re-run on a quiet box; setting " +
+                "testcontainers.reuse.enable=true in ~/.testcontainers.properties keeps a started " +
+                "container between runs and largely stops this happening. Read docs/backlog.md item 17 " +
+                "before looking for a regression. The container's own failure is attached as the cause.",
             cause
         );
     }
@@ -67,15 +67,15 @@ public class TestContainerUnavailableException extends IllegalStateException {
     static TestContainerUnavailableException budgetAlreadySpent(String image, int attempts, Throwable cause) {
         return new TestContainerUnavailableException(
             "The " +
-            image +
-            " test container is unavailable on this machine and this run has stopped trying: an " +
-            "earlier test class already spent the " +
-            attempts +
-            "-attempt budget on it, so nothing was asked of Docker for this class and it failed at " +
-            "once. " +
-            capitalise(machineLoad()) +
-            " now. This is not a defect in the code under test — read the failure attached as the " +
-            "cause, and docs/backlog.md item 17, before looking for a regression.",
+                image +
+                " test container is unavailable on this machine and this run has stopped trying: an " +
+                "earlier test class already spent the " +
+                attempts +
+                "-attempt budget on it, so nothing was asked of Docker for this class and it failed at " +
+                "once. " +
+                capitalise(machineLoad()) +
+                " now. This is not a defect in the code under test — read the failure attached as the " +
+                "cause, and docs/backlog.md item 17, before looking for a regression.",
             cause
         );
     }

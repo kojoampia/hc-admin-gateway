@@ -93,7 +93,7 @@ public class LocaleConfiguration {
             }
             exchange
                 .getAttributes()
-                .put(LOCALE_REQUEST_ATTRIBUTE_NAME, (locale != null ? locale : LocaleContextHolder.getLocale(exchange.getLocaleContext())));
+                .put(LOCALE_REQUEST_ATTRIBUTE_NAME, locale != null ? locale : LocaleContextHolder.getLocale(exchange.getLocaleContext()));
             if (timeZone != null) {
                 exchange.getAttributes().put(TIME_ZONE_REQUEST_ATTRIBUTE_NAME, timeZone);
             } else {
@@ -145,11 +145,11 @@ public class LocaleConfiguration {
                     if (logger.isTraceEnabled()) {
                         logger.trace(
                             "Parsed cookie value [" +
-                            cookie.getValue() +
-                            "] into locale '" +
-                            locale +
-                            "'" +
-                            (timeZone != null ? " and time zone '" + timeZone.getID() + "'" : "")
+                                cookie.getValue() +
+                                "] into locale '" +
+                                locale +
+                                "'" +
+                                (timeZone != null ? " and time zone '" + timeZone.getID() + "'" : "")
                         );
                     }
                 }

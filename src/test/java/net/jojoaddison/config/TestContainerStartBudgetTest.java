@@ -107,7 +107,8 @@ class TestContainerStartBudgetTest {
                     throw containerFailure;
                 },
                 () -> {}
-            ))
+            )
+        )
             .isInstanceOf(TestContainerUnavailableException.class)
             .hasCause(containerFailure)
             // The whole point of the class. A reader who gets this instead of "ApplicationContext
@@ -158,7 +159,11 @@ class TestContainerStartBudgetTest {
     }
 
     private List<String> messagesAt(Level level) {
-        return captured.list.stream().filter(event -> event.getLevel() == level).map(ILoggingEvent::getFormattedMessage).toList();
+        return captured.list
+            .stream()
+            .filter(event -> event.getLevel() == level)
+            .map(ILoggingEvent::getFormattedMessage)
+            .toList();
     }
 
     private static void spend(TestContainerStartBudget budget, RuntimeException failure) {

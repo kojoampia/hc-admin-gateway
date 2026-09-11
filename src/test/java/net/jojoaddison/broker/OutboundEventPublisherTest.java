@@ -78,8 +78,8 @@ class OutboundEventPublisherTest {
         };
         OutboundEventPublisher publisherOnAFullQueue = new OutboundEventPublisher(streamBridge, full);
 
-        assertThatCode(
-            () -> publisherOnAFullQueue.publish("some-out-0", "hello", "The message this test publishes")
+        assertThatCode(() ->
+            publisherOnAFullQueue.publish("some-out-0", "hello", "The message this test publishes")
         ).doesNotThrowAnyException();
         verifyNoInteractions(streamBridge);
     }
