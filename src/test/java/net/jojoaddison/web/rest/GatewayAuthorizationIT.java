@@ -116,7 +116,13 @@ class GatewayAuthorizationIT {
 
     @Test
     void anAdminMayWriteThroughTheGateway() {
-        expectAllowed(webTestClient.post().uri(SERVICE_WRITE).headers(h -> h.setBearerAuth(admin())).exchange());
+        expectAllowed(
+            webTestClient
+                .post()
+                .uri(SERVICE_WRITE)
+                .headers(h -> h.setBearerAuth(admin()))
+                .exchange()
+        );
     }
 
     /**
@@ -126,15 +132,45 @@ class GatewayAuthorizationIT {
      */
     @Test
     void anOperatorMayNotWriteThroughTheGateway() {
-        expectRefused(webTestClient.post().uri(SERVICE_WRITE).headers(h -> h.setBearerAuth(operator())).exchange());
-        expectRefused(webTestClient.put().uri(SERVICE_WRITE).headers(h -> h.setBearerAuth(operator())).exchange());
-        expectRefused(webTestClient.patch().uri(SERVICE_WRITE).headers(h -> h.setBearerAuth(operator())).exchange());
-        expectRefused(webTestClient.delete().uri(SERVICE_WRITE).headers(h -> h.setBearerAuth(operator())).exchange());
+        expectRefused(
+            webTestClient
+                .post()
+                .uri(SERVICE_WRITE)
+                .headers(h -> h.setBearerAuth(operator()))
+                .exchange()
+        );
+        expectRefused(
+            webTestClient
+                .put()
+                .uri(SERVICE_WRITE)
+                .headers(h -> h.setBearerAuth(operator()))
+                .exchange()
+        );
+        expectRefused(
+            webTestClient
+                .patch()
+                .uri(SERVICE_WRITE)
+                .headers(h -> h.setBearerAuth(operator()))
+                .exchange()
+        );
+        expectRefused(
+            webTestClient
+                .delete()
+                .uri(SERVICE_WRITE)
+                .headers(h -> h.setBearerAuth(operator()))
+                .exchange()
+        );
     }
 
     @Test
     void aPlainUserMayNotWriteThroughTheGateway() {
-        expectRefused(webTestClient.post().uri(SERVICE_WRITE).headers(h -> h.setBearerAuth(plainUser())).exchange());
+        expectRefused(
+            webTestClient
+                .post()
+                .uri(SERVICE_WRITE)
+                .headers(h -> h.setBearerAuth(plainUser()))
+                .exchange()
+        );
     }
 
     // --- the carve-outs around them -----------------------------------------------------------
@@ -183,10 +219,34 @@ class GatewayAuthorizationIT {
     @Test
     void anOperatorMayReadTheProfessionalStackButNotWriteToIt() {
         expectAllowed(get(PROFESSIONAL_GET, operator()));
-        expectRefused(webTestClient.post().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(operator())).exchange());
-        expectRefused(webTestClient.put().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(operator())).exchange());
-        expectRefused(webTestClient.patch().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(operator())).exchange());
-        expectRefused(webTestClient.delete().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(operator())).exchange());
+        expectRefused(
+            webTestClient
+                .post()
+                .uri(PROFESSIONAL_GET)
+                .headers(h -> h.setBearerAuth(operator()))
+                .exchange()
+        );
+        expectRefused(
+            webTestClient
+                .put()
+                .uri(PROFESSIONAL_GET)
+                .headers(h -> h.setBearerAuth(operator()))
+                .exchange()
+        );
+        expectRefused(
+            webTestClient
+                .patch()
+                .uri(PROFESSIONAL_GET)
+                .headers(h -> h.setBearerAuth(operator()))
+                .exchange()
+        );
+        expectRefused(
+            webTestClient
+                .delete()
+                .uri(PROFESSIONAL_GET)
+                .headers(h -> h.setBearerAuth(operator()))
+                .exchange()
+        );
     }
 
     /**
@@ -197,7 +257,13 @@ class GatewayAuthorizationIT {
     @Test
     void aPlainUserMayNotReachTheProfessionalStack() {
         expectRefused(get(PROFESSIONAL_GET, plainUser()));
-        expectRefused(webTestClient.post().uri(PROFESSIONAL_GET).headers(h -> h.setBearerAuth(plainUser())).exchange());
+        expectRefused(
+            webTestClient
+                .post()
+                .uri(PROFESSIONAL_GET)
+                .headers(h -> h.setBearerAuth(plainUser()))
+                .exchange()
+        );
     }
 
     @Test
@@ -274,7 +340,11 @@ class GatewayAuthorizationIT {
     // --- helpers ----------------------------------------------------------------------------
 
     private WebTestClient.ResponseSpec get(String uri, String token) {
-        return webTestClient.get().uri(uri).headers(h -> h.setBearerAuth(token)).exchange();
+        return webTestClient
+            .get()
+            .uri(uri)
+            .headers(h -> h.setBearerAuth(token))
+            .exchange();
     }
 
     /**
@@ -282,24 +352,18 @@ class GatewayAuthorizationIT {
      * the request through — see the note on this class about why the routing outcome is not pinned.
      */
     private void expectAllowed(WebTestClient.ResponseSpec response) {
-        response
-            .expectStatus()
-            .value(status -> {
-                if (status == HttpStatus.UNAUTHORIZED.value() || status == HttpStatus.FORBIDDEN.value()) {
-                    throw new AssertionError("expected the request to be authorized, but the chain refused it with " + status);
-                }
-            });
+        response.expectStatus().value(status -> {
+            if (status == HttpStatus.UNAUTHORIZED.value() || status == HttpStatus.FORBIDDEN.value()) {
+                throw new AssertionError("expected the request to be authorized, but the chain refused it with " + status);
+            }
+        });
     }
 
     private void expectRefused(WebTestClient.ResponseSpec response) {
-        response
-            .expectStatus()
-            .value(status -> {
-                if (status != HttpStatus.UNAUTHORIZED.value() && status != HttpStatus.FORBIDDEN.value()) {
-                    throw new AssertionError(
-                        "expected 401 or 403, got " + status + " — the request reached routing when it should not have"
-                    );
-                }
-            });
+        response.expectStatus().value(status -> {
+            if (status != HttpStatus.UNAUTHORIZED.value() && status != HttpStatus.FORBIDDEN.value()) {
+                throw new AssertionError("expected 401 or 403, got " + status + " — the request reached routing when it should not have");
+            }
+        });
     }
 }

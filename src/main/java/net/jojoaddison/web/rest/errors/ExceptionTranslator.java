@@ -94,10 +94,12 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler implemen
         if (
             ex instanceof net.jojoaddison.service.UsernameAlreadyUsedException
         ) return (ProblemDetailWithCause) new LoginAlreadyUsedException().getBody();
-        if (ex instanceof net.jojoaddison.service.EmailAlreadyUsedException) return (ProblemDetailWithCause) new EmailAlreadyUsedException()
-            .getBody();
-        if (ex instanceof net.jojoaddison.service.InvalidPasswordException) return (ProblemDetailWithCause) new InvalidPasswordException()
-            .getBody();
+        if (
+            ex instanceof net.jojoaddison.service.EmailAlreadyUsedException
+        ) return (ProblemDetailWithCause) new EmailAlreadyUsedException().getBody();
+        if (
+            ex instanceof net.jojoaddison.service.InvalidPasswordException
+        ) return (ProblemDetailWithCause) new InvalidPasswordException().getBody();
 
         if (ex instanceof AuthenticationException) {
             // Ensure no information about existing users is revealed via failed authentication attempts
@@ -139,7 +141,7 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler implemen
         if (problemProperties == null || !problemProperties.containsKey(PATH_KEY)) problem.setProperty(PATH_KEY, getPathValue(request));
 
         if (
-            (err instanceof WebExchangeBindException fieldException) &&
+            err instanceof WebExchangeBindException fieldException &&
             (problemProperties == null || !problemProperties.containsKey(FIELD_ERRORS_KEY))
         ) problem.setProperty(FIELD_ERRORS_KEY, getFieldErrors(fieldException));
 
@@ -157,13 +159,12 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler implemen
             .getBindingResult()
             .getFieldErrors()
             .stream()
-            .map(
-                f ->
-                    new FieldErrorVM(
-                        f.getObjectName().replaceFirst("DTO$", ""),
-                        f.getField(),
-                        StringUtils.isNotBlank(f.getDefaultMessage()) ? f.getDefaultMessage() : f.getCode()
-                    )
+            .map(f ->
+                new FieldErrorVM(
+                    f.getObjectName().replaceFirst("DTO$", ""),
+                    f.getField(),
+                    StringUtils.isNotBlank(f.getDefaultMessage()) ? f.getDefaultMessage() : f.getCode()
+                )
             )
             .toList();
     }
@@ -250,12 +251,12 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler implemen
     private HttpHeaders buildHeaders(Throwable err) {
         return err instanceof BadRequestAlertException badRequestAlertException
             ? HeaderUtil.createFailureAlert(
-                applicationName,
-                true,
-                badRequestAlertException.getEntityName(),
-                badRequestAlertException.getErrorKey(),
-                badRequestAlertException.getMessage()
-            )
+                  applicationName,
+                  true,
+                  badRequestAlertException.getEntityName(),
+                  badRequestAlertException.getErrorKey(),
+                  badRequestAlertException.getMessage()
+              )
             : null;
     }
 

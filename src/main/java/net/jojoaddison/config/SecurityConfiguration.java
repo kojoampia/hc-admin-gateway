@@ -47,33 +47,28 @@ public class SecurityConfiguration {
 
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
-        http
-            .securityMatcher(
-                new NegatedServerWebExchangeMatcher(
-                    new OrServerWebExchangeMatcher(pathMatchers("/app/**", "/i18n/**", "/content/**", "/swagger-ui/**"))
-                )
+        http.securityMatcher(
+            new NegatedServerWebExchangeMatcher(
+                new OrServerWebExchangeMatcher(pathMatchers("/app/**", "/i18n/**", "/content/**", "/swagger-ui/**"))
             )
+        )
             .cors(withDefaults())
             .csrf(csrf -> csrf.disable())
-            .headers(
-                headers ->
-                    headers
-                        .contentSecurityPolicy(csp -> csp.policyDirectives(jHipsterProperties.getSecurity().getContentSecurityPolicy()))
-                        .frameOptions(frameOptions -> frameOptions.mode(Mode.DENY))
-                        .referrerPolicy(
-                            referrer ->
-                                referrer.policy(ReferrerPolicyServerHttpHeadersWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
+            .headers(headers ->
+                headers
+                    .contentSecurityPolicy(csp -> csp.policyDirectives(jHipsterProperties.getSecurity().getContentSecurityPolicy()))
+                    .frameOptions(frameOptions -> frameOptions.mode(Mode.DENY))
+                    .referrerPolicy(referrer ->
+                        referrer.policy(ReferrerPolicyServerHttpHeadersWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
+                    )
+                    .permissionsPolicy(permissions ->
+                        permissions.policy(
+                            "camera=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), sync-xhr=()"
                         )
-                        .permissionsPolicy(
-                            permissions ->
-                                permissions.policy(
-                                    "camera=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), sync-xhr=()"
-                                )
-                        )
+                    )
             )
-            .authorizeExchange(
-                authz ->
-                    // prettier-ignore
+            .authorizeExchange(authz ->
+                // prettier-ignore
                 authz
                     .pathMatchers("/api/authenticate").permitAll()
                     // /api/register and /api/activate are deliberately absent. This is an internal

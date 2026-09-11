@@ -93,17 +93,17 @@ public class AccountResource {
                             throw new EmailAlreadyUsedException();
                         }
                         return userRepository.findOneByLogin(userLogin);
-                    }))
+                    })
+            )
             .switchIfEmpty(Mono.error(new AccountResourceException("User could not be found")))
-            .flatMap(
-                user ->
-                    userService.updateUser(
-                        userDTO.getFirstName(),
-                        userDTO.getLastName(),
-                        userDTO.getEmail(),
-                        userDTO.getLangKey(),
-                        userDTO.getImageUrl()
-                    )
+            .flatMap(user ->
+                userService.updateUser(
+                    userDTO.getFirstName(),
+                    userDTO.getLastName(),
+                    userDTO.getEmail(),
+                    userDTO.getLangKey(),
+                    userDTO.getImageUrl()
+                )
             );
     }
 

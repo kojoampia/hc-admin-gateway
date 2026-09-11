@@ -73,12 +73,12 @@ class MessageCatalogueEncodingTest {
     void findsEveryCatalogueThatShips() throws IOException {
         // Asserted rather than filtered, for BrandTermsTest's reason: a renamed catalogue dropping
         // silently out of coverage is the same as not checking it, and would leave this test green.
-        assertThat(catalogues().map(path -> path.getFileName().toString()).sorted().toList()).containsExactly(
-            "messages.properties",
-            "messages_de.properties",
-            "messages_en.properties",
-            "messages_fr.properties"
-        );
+        assertThat(
+            catalogues()
+                .map(path -> path.getFileName().toString())
+                .sorted()
+                .toList()
+        ).containsExactly("messages.properties", "messages_de.properties", "messages_en.properties", "messages_fr.properties");
     }
 
     @Test
@@ -97,9 +97,9 @@ class MessageCatalogueEncodingTest {
             } catch (CharacterCodingException e) {
                 offences.add(
                     catalogue.getFileName() +
-                    " is not UTF-8 (" +
-                    e +
-                    "). Spring Boot reads every catalogue as UTF-8; convert the file, do not change the encoding."
+                        " is not UTF-8 (" +
+                        e +
+                        "). Spring Boot reads every catalogue as UTF-8; convert the file, do not change the encoding."
                 );
             }
         }
@@ -155,7 +155,9 @@ class MessageCatalogueEncodingTest {
         assertThat(messages.getMessage("email.activation.text2", null, Locale.GERMAN)).isEqualTo("Liebe Grüße,");
         assertThat(messages.getMessage("email.reset.text2", null, Locale.GERMAN)).isEqualTo("Liebe Grüße,");
 
-        assertThat(messages.getMessage("email.reset.text1", null, Locale.GERMAN)).startsWith("Für Ihren").contains("zurückzusetzen");
+        assertThat(messages.getMessage("email.reset.text1", null, Locale.GERMAN))
+            .startsWith("Für Ihren")
+            .contains("zurückzusetzen");
 
         // French was already UTF-8 and correct. Asserted so that a re-encode of the whole folder
         // cannot fix German by breaking the locale that was never broken.

@@ -1,0 +1,42 @@
+# Revisions `git blame` should look straight through.
+#
+# Only bulk-formatting commits belong here — a commit that touched a line for a reason
+# must never be listed, because in this estate `git blame` is frequently the only record
+# of WHY a line is the way it is, and this file is the mechanism that keeps that true
+# across a reformat.
+#
+# --- Turning it on --------------------------------------------------------------------
+#
+# GitHub's blame view reads this file by itself. Local `git` does not: it is off until a
+# clone asks for it, once, with
+#
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# and there is no way to ship that setting in the repository, which is why it is written
+# here rather than assumed. Without it `git blame` silently attributes every line of the
+# reformat below to the reformat.
+#
+# --- Two properties that decide how entries get added -----------------------------------
+#
+# A REVISION THAT DOES NOT RESOLVE IS IGNORED IN SILENCE. Measured on git 2.53.0: a
+# 40-character SHA naming no object produces no warning, no stderr, and exit 0, and blame
+# comes back exactly as if this file were empty. So a wrong SHA here is not a loud
+# failure, it is this file quietly not working — verify an entry after adding it, by
+# blaming a line the listed commit touched and checking the author is the original one.
+#
+# THE SHA CANNOT BE ADDED BY THE COMMIT IT NAMES. A commit's SHA is a hash of its own
+# content, so there is no fixed point: writing the SHA and amending produces a different
+# SHA, and by the property above the file then names a commit that no longer exists and
+# fails open. Hence the ordering used below — reformat first, then a second commit, this
+# one, carrying the SHA the first one turned out to have.
+#
+# ----------------------------------------------------------------------------------------
+#
+# Item 66, 2026-09-11. Every Java source reformatted with the prettier@3.9.6 /
+# prettier-plugin-java@2.10.3 that package-lock.json pins. 31 files. The committed code
+# had been matching prettier 3.2.5, the version that was INSTALLED here until item 18 ran
+# `npm ci`; `.lintstagedrc.cjs` runs what is installed rather than what is pinned, and no
+# CI job looked at formatting at all, so the drift was enforced rather than reported. The
+# commit is formatting only and its message lists the two lines in it that are not
+# whitespace (Prettier dropping redundant parentheses, both value-preserving).
+d535e57d6eefb964f84141f5d14b7f0b4f8cc8f2

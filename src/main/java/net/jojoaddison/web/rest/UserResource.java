@@ -181,17 +181,16 @@ public class UserResource {
                 return userService.updateUser(userDTO);
             })
             .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND)))
-            .map(
-                user ->
-                    ResponseEntity.ok()
-                        .headers(
-                            HeaderUtil.createAlert(
-                                applicationName,
-                                "A user is updated with identifier " + userDTO.getLogin(),
-                                userDTO.getLogin()
-                            )
+            .map(user ->
+                ResponseEntity.ok()
+                    .headers(
+                        HeaderUtil.createAlert(
+                            applicationName,
+                            "A user is updated with identifier " + userDTO.getLogin(),
+                            userDTO.getLogin()
                         )
-                        .body(user)
+                    )
+                    .body(user)
             );
     }
 
@@ -216,12 +215,11 @@ public class UserResource {
         return userService
             .countManagedUsers()
             .map(total -> new PageImpl<>(new ArrayList<>(), pageable, total))
-            .map(
-                page ->
-                    PaginationUtil.generatePaginationHttpHeaders(
-                        ForwardedHeaderUtils.adaptFromForwardedHeaders(request.getURI(), request.getHeaders()),
-                        page
-                    )
+            .map(page ->
+                PaginationUtil.generatePaginationHttpHeaders(
+                    ForwardedHeaderUtils.adaptFromForwardedHeaders(request.getURI(), request.getHeaders()),
+                    page
+                )
             )
             .map(headers -> ResponseEntity.ok().headers(headers).body(userService.getAllManagedUsers(pageable)));
     }
@@ -256,14 +254,12 @@ public class UserResource {
     @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
     public Mono<ResponseEntity<Void>> deleteUser(@PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login) {
         log.debug("REST request to delete User: {}", login);
-        return userService
-            .deleteUser(login)
-            .then(
-                Mono.just(
-                    ResponseEntity.noContent()
-                        .headers(HeaderUtil.createAlert(applicationName, "A user is deleted with identifier " + login, login))
-                        .build()
-                )
-            );
+        return userService.deleteUser(login).then(
+            Mono.just(
+                ResponseEntity.noContent()
+                    .headers(HeaderUtil.createAlert(applicationName, "A user is deleted with identifier " + login, login))
+                    .build()
+            )
+        );
     }
 }

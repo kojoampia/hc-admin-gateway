@@ -55,12 +55,11 @@ public class PublicUserResource {
         return userService
             .countManagedUsers()
             .map(total -> new PageImpl<>(new ArrayList<>(), pageable, total))
-            .map(
-                page ->
-                    PaginationUtil.generatePaginationHttpHeaders(
-                        ForwardedHeaderUtils.adaptFromForwardedHeaders(request.getURI(), request.getHeaders()),
-                        page
-                    )
+            .map(page ->
+                PaginationUtil.generatePaginationHttpHeaders(
+                    ForwardedHeaderUtils.adaptFromForwardedHeaders(request.getURI(), request.getHeaders()),
+                    page
+                )
             )
             .map(headers -> ResponseEntity.ok().headers(headers).body(userService.getAllPublicUsers(pageable)));
     }

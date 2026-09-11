@@ -615,8 +615,6 @@ class LoginAttemptNeverLoggedTest {
         return -1;
     }
 
-
-
     private static List<Path> inScopeSources() {
         return mainSourcesMatching(IN_SCOPE);
     }
