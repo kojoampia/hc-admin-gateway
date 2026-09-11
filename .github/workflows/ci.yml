@@ -112,6 +112,46 @@ jobs:
       - name: Checkstyle and nohttp
         run: ./mvnw -ntp checkstyle:check --batch-mode
 
+      # --- Formatting, and why it is gated HERE rather than only at pre-commit -----------------
+      #
+      # Item 66. Until 2026-09-11 nothing in this repository checked Prettier. The only enforcement
+      # was .lintstagedrc.cjs, which runs whatever is INSTALLED rather than what package-lock.json
+      # PINS — so when node_modules held prettier 3.2.5 against a 3.9.6 pin, the hook quietly
+      # enforced the old formatter on every commit, `prettier --check` was never asked, and 33
+      # committed files in this repo had drifted from the tool that is supposed to be authoritative
+      # for them. Item 18's `npm ci` is what made that visible; nothing in here could have.
+      #
+      # hc-admin-app is the control and the reason this step exists at all: it is the one of the
+      # three repos that gates formatting in CI (through eslint's prettier plugin) and the one that
+      # never drifted on either package. Reformatting without adding this step would buy one clean
+      # afternoon and re-open on the next stale install.
+      #
+      # THE GLOB IS NARROWER THAN `npm run prettier:check`, AND THAT IS MEASURED, NOT AN OVERSIGHT.
+      # The repo script covers {,**/}*.{md,json,yml,html,java}, and on the day this landed exactly
+      # one non-Java file failed it: admin-gateway.md, the historical plan doc, short one trailing
+      # newline. Item 66's scope was the Java, so widening this to the script means fixing that file
+      # first — do it, and then widen, because .jhipster/*.json, the yml config and the markdown are
+      # ungated by the line below.
+      #
+      # `npm ci`, not `npm install`: the lockfile is the input, and a gate that resolves different
+      # versions than the pre-commit hook is not a gate — it is a second opinion.
+      #
+      # Placed after Verify and Checkstyle on this file's own rule: a style failure must never mask
+      # a real test failure. The cost is that a formatting miss reports at the end of a ~45 minute
+      # run, and is not reported at all if the suite is already red. That is the same trade the
+      # Checkstyle step above accepts.
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install formatting tools
+        run: npm ci
+
+      - name: Prettier
+        run: npx prettier --check "src/**/*.java"
+
       - name: Upload surefire and failsafe reports
         if: failure()
         uses: actions/upload-artifact@v4
