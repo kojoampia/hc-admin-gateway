@@ -6,7 +6,7 @@ This application was generated using JHipster 8.3.0, you can find documentation 
 
 This is a "gateway" application intended to be part of a microservice architecture, please refer to the [Doing microservices with JHipster][] page of the documentation for more information.
 
-This application is configured for Service Discovery and Configuration with Consul. On launch, it will refuse to start if it is not able to connect to Consul at [http://localhost:8500](http://localhost:8500). For more information, read our documentation on [Service Discovery and Configuration with Consul][].
+This application is configured for Service Discovery and Configuration with Consul at [http://localhost:8500](http://localhost:8500), registering as `adminGateway`. **Under `prod` it refuses to start without it** — `bootstrap-prod.yml` sets `spring.cloud.consul.config.fail-fast: true`; under `dev` that flag is `false`, so an unreachable Consul _config_ server does not by itself abort the start. Bring Consul up either way — see [Consul not reachable](#consul-not-reachable), and [`AGENTS.md`](AGENTS.md) for what the configuration does and does not settle. For more information, read our documentation on [Service Discovery and Configuration with Consul][].
 
 ## At a glance
 
@@ -23,16 +23,20 @@ This application is configured for Service Discovery and Configuration with Cons
 ### Place in the stack
 
 ```
-hc-admin-dashboard (Angular, :4200)
+hc-admin-app (Angular console, :9000 dev)
   └─ hc-admin-gateway (:5504 dev / :5503 prod)   ← this repo
        └─ hc-admin-service (:5507 dev / :8080 prod)
 ```
 
+The console is **`hc-admin-app`**. This said `hc-admin-dashboard` until 2026-09-11: that repository was archived on 2026-08-11, is read-only on GitHub and is no longer checked out in the workspace — nothing lands there, not even fixes. Its port depends on how it is launched: `npm start` binds **:9000** (`angular.json`), `deploy/dev/startup.sh` passes `--port 4200`.
+
 ### Routing
 
-`spring.cloud.gateway.discovery.locator` is enabled with `lower-case-service-id: true`, so every Consul-registered service is automatically published at `/services/{serviceId-lowercased}/**` with the prefix rewritten away. `default-filters: [JWTRelay]` applies `JWTRelayGatewayFilterFactory` to every route, validating the bearer token and relaying it downstream. `application-dev.yml` adds one static route: `/services/admin-service/**` → `http://localhost:5507` with `StripPrefix=2`.
+`spring.cloud.gateway.server.webflux.discovery.locator` is enabled with `lower-case-service-id: true`, so every Consul-registered service is automatically published at `/services/{serviceId-lowercased}/**` with the prefix rewritten away. `default-filters: [JWTRelay]` applies `JWTRelayGatewayFilterFactory` to every route, validating the bearer token and relaying it downstream. `application-dev.yml` adds one static route: `id: hcadminservice`, `/services/hcadminservice/**` → `http://localhost:5507` with `StripPrefix=2` (`:53-56`).
 
-**Service naming:** `hc-admin-service` registers as `hcadminservice`, so the discovery locator publishes `/services/hcadminservice/**` — which is what the Angular dashboard calls. The static `/services/admin-service/**` dev route is a convenience for running the service outside Docker, not a second contract.
+⚠ **The `server.webflux` segment is load-bearing, and getting it wrong is silent.** Spring Cloud Gateway moved these properties there in the 2025.x train, and anything left directly under `spring.cloud.gateway.*` **still binds as a property while nothing reads it** — so tuning at the old path changes nothing, logs nothing and raises no error. This paragraph named the old root until 2026-09-11; both files in this repo were migrated, and the note at `application.yml:117` records it.
+
+**Service naming:** `hc-admin-service` registers as `hcadminservice`, so the discovery locator publishes `/services/hcadminservice/**` — which is what the Angular console (`hc-admin-app`) calls. The static dev route uses the **same** name and is a convenience for running the service outside Docker, not a second contract. This said `/services/admin-service/**` until 2026-09-11, contradicting the sentence it sits in; the route was renamed on 2026-09-01 because, as its own comment in `application-dev.yml` records, `admin-service` is a name "nothing else in the system used".
 
 ## Project Structure
 
@@ -345,8 +349,10 @@ The seeded passwords are **not** the same as the logins — use `Admin@01234`, `
 Check which path the caller is using against what the gateway actually publishes:
 
 - discovery locator serves `/services/{consul-service-name-lowercased}/**` — for `hc-admin-service` that is `/services/hcadminservice/**`
-- the dev profile also defines a static `/services/admin-service/**` route
-- the Angular dashboard currently calls `/services/hcadminservice/...`, which matches neither
+- the dev profile also defines a static route, on the **same** name: `/services/hcadminservice/**` (`application-dev.yml:53-56`)
+- the Angular console calls `/services/hcadminservice/...`, which matches both
+
+These three said `admin-service` and "matches neither" until 2026-09-11 — a description of the mismatch that caused this symptom, left in place after it was fixed on 2026-09-01. If you are reading this because of a 404, the names agreeing is no longer the explanation.
 
 Confirm the service is registered in Consul at http://localhost:8500 before assuming a gateway bug.
 
