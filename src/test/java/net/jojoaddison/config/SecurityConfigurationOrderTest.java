@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import net.jojoaddison.JavaSourceText;
 import org.junit.jupiter.api.Test;
 
@@ -73,37 +72,60 @@ class SecurityConfigurationOrderTest {
         "case that describes what deleting it costs.";
 
     /**
-     * The matcher argument lists of the {@code authorizeExchange} block, in the order the chain
-     * evaluates them.
-     *
-     * <p>Two things are deliberately not done here. It reads from {@code authorizeExchange} onwards,
-     * so the {@code securityMatcher} above it — which also calls {@code pathMatchers}, for
-     * {@code /app/**} and friends — is not mistaken for an authorization rule. And it drops
-     * whole-line comments <em>only</em>, rather than stripping comments generally: the block above the
-     * professionalservice rules quotes every path string in this file, so a leaked comment would be
-     * indistinguishable from a rule, and a regex for {@code /* ... *}{@code /} would match the
-     * {@code /*} inside the literal {@code "/api/**"} and eat everything up to the {@code *}{@code /}
-     * inside {@code "/services/*}{@code /management/..."} — silently deleting the readiness carve-out
-     * this test exists to locate. {@link #theCommentBlockIsNotMistakenForRules()} is the check that
-     * the filtering worked.
+     * The matcher argument lists of {@link SecurityConfiguration}'s {@code authorizeExchange} block,
+     * in the order the chain evaluates them.
      */
     private static List<String> matchersInOrder() throws IOException {
         assertThat(SOURCE).as("SecurityConfiguration moved — this guard is reading nothing").isRegularFile();
+        return matchersIn(Files.readString(SOURCE, StandardCharsets.UTF_8));
+    }
 
-        String source = Files.readString(SOURCE, StandardCharsets.UTF_8);
+    /**
+     * The extraction itself, over any source — so the two constructed cases at the foot of this class
+     * grade the ordering reader rather than a second copy written beside it. That is the same split
+     * {@link #ruleIn(String, String)} is in, for the same reason.
+     *
+     * <h2>⚠ One lexer per file — backlog item 78</h2>
+     *
+     * <p>It reads from {@code authorizeExchange} onwards, so the {@code securityMatcher} above it —
+     * which also calls {@code pathMatchers}, for {@code /app/**} and friends — is not mistaken for an
+     * authorization rule. Comments are stripped <em>before</em> that search rather than after it, so a
+     * comment naming {@code authorizeExchange} cannot move the start point up into the
+     * {@code securityMatcher} and silently add matchers to the front of the order.
+     *
+     * <p>The stripping is {@link net.jojoaddison.JavaSourceText}'s — literally the line {@link #ruleIn}
+     * uses. Until item 78 this dropped <b>whole-line {@code //} only</b>, justified here by the
+     * argument that stripping comments generally would need a regex for {@code /* ... *}{@code /},
+     * which would match the {@code /*} inside the literal {@code "/api/**"} and eat everything up to
+     * the {@code *}{@code /} inside {@code "/services/*}{@code /management/..."} — deleting the
+     * readiness carve-out this class exists to locate. <b>That argument is true of a regex and the
+     * lexer is not one:</b> it is a character scan that copies string literals through untouched,
+     * precisely so that no path can open a comment, and {@code ruleIn} one screen down was already
+     * relying on it. So the file carried a written reason not to do what the file did.
+     *
+     * <p>What the weaker filter cost while it stood: a <em>trailing</em> {@code //} comment, and every
+     * {@code /* ... *}{@code /} block, survived into the text {@link #PATH_MATCHERS} scans — so a
+     * comment quoting a full matcher call entered the ordering indices <em>as a rule</em>. Order is
+     * the half that decides whether {@code /api/auth-activity/**} — {@code ROLE_ADMIN} alone, serving
+     * logins as they were entered — is evaluated at all. Latent rather than live: every comment in
+     * that block is whole-line {@code //}, which is what
+     * {@link #theCommentBlockIsNotMistakenForRules()} checks on the real file;
+     * {@link #aCommentQuotingAMatcherIsNotCountedAsARule()} and
+     * {@link #aCommentCannotHideAnInvertedOrder()} pin it on source constructed to break it.
+     *
+     * <p>Whitespace is collapsed for the reason {@code ruleIn} collapses it — Prettier formats Java
+     * here and a cosmetic wrap of a matcher must not change a verdict. The argument lists returned are
+     * therefore whitespace-free, which is what lets the constructed cases state them exactly.
+     */
+    private static List<String> matchersIn(String rawSource) {
+        String source = JavaSourceText.collapseWhitespace(JavaSourceText.withoutComments(rawSource));
         int authorizeExchange = source.indexOf("authorizeExchange");
         assertThat(authorizeExchange)
             .as("no authorizeExchange block in SecurityConfiguration — the chain was restructured and this guard cannot read it")
             .isGreaterThan(-1);
 
-        String rules = source
-            .substring(authorizeExchange)
-            .lines()
-            .filter(line -> !line.strip().startsWith("//"))
-            .collect(Collectors.joining("\n"));
-
         List<String> matchers = new ArrayList<>();
-        Matcher found = PATH_MATCHERS.matcher(rules);
+        Matcher found = PATH_MATCHERS.matcher(source.substring(authorizeExchange));
         while (found.find()) {
             matchers.add(found.group(1));
         }
@@ -128,7 +150,10 @@ class SecurityConfigurationOrderTest {
      */
     @Test
     void theCommentBlockIsNotMistakenForRules() throws IOException {
-        List<String> professional = matchersInOrder().stream().filter(arguments -> arguments.contains(PROFESSIONAL)).toList();
+        List<String> professional = matchersInOrder()
+            .stream()
+            .filter(arguments -> arguments.contains(PROFESSIONAL))
+            .toList();
 
         assertThat(professional)
             .as("expected exactly two %s matchers — the GET rule and the catch-all — but found %s", PROFESSIONAL, professional)
@@ -147,10 +172,10 @@ class SecurityConfigurationOrderTest {
         assertThat(indexOf(matchers, PROFESSIONAL))
             .as(
                 "SecurityConfiguration no longer states %s explicitly. The blanket /services/** rules " +
-                "still decide it the same way today, so nothing else in this suite can fail — which is " +
-                "why this assertion exists. Those blanket rules mirror hc-admin-service's read/write " +
-                "split; a change following that service would move them and take another product's " +
-                "stack with them silently. Restore the rule rather than deleting this test.",
+                    "still decide it the same way today, so nothing else in this suite can fail — which is " +
+                    "why this assertion exists. Those blanket rules mirror hc-admin-service's read/write " +
+                    "split; a change following that service would move them and take another product's " +
+                    "stack with them silently. Restore the rule rather than deleting this test.",
                 PROFESSIONAL
             )
             .isGreaterThan(-1);
@@ -174,8 +199,8 @@ class SecurityConfigurationOrderTest {
         assertThat(professional)
             .as(
                 "%s is now ABOVE the %s carve-out, so it shadows it. Anonymous readiness on this " +
-                "prefix answers 401 instead of passing, and an orchestrator marks the route " +
-                "permanently unhealthy — which no test that sends an authenticated request will notice.",
+                    "prefix answers 401 instead of passing, and an orchestrator marks the route " +
+                    "permanently unhealthy — which no test that sends an authenticated request will notice.",
                 PROFESSIONAL,
                 READINESS
             )
@@ -184,8 +209,8 @@ class SecurityConfigurationOrderTest {
         assertThat(professional)
             .as(
                 "%s is now ABOVE the %s carve-out, so it shadows it. That carve-out is admin-only and " +
-                "the rule above it admits an operator on GET, so api-docs for another product's stack " +
-                "becomes readable by every operator in the estate.",
+                    "the rule above it admits an operator on GET, so api-docs for another product's stack " +
+                    "becomes readable by every operator in the estate.",
                 PROFESSIONAL,
                 API_DOCS
             )
@@ -209,7 +234,7 @@ class SecurityConfigurationOrderTest {
         assertThat(professional)
             .as(
                 "%s is now BELOW the blanket %s rules, which already match it — so the explicit rules " +
-                "are unreachable and pin nothing, while still reading like a guarantee.",
+                    "are unreachable and pin nothing, while still reading like a guarantee.",
                 PROFESSIONAL,
                 BLANKET
             )
@@ -238,10 +263,10 @@ class SecurityConfigurationOrderTest {
         assertThat(rule)
             .as(
                 "SecurityConfiguration no longer states %s. It is ROLE_ADMIN alone — narrower than every " +
-                "other read on this console — because the response carries logins as they were entered " +
-                "(LoginAttempt's first safeguard). Without the rule the blanket /api/** matcher decides " +
-                "it, and that says authenticated(), which across three gateways sharing one signing key " +
-                "means every token in the estate.",
+                    "other read on this console — because the response carries logins as they were entered " +
+                    "(LoginAttempt's first safeguard). Without the rule the blanket /api/** matcher decides " +
+                    "it, and that says authenticated(), which across three gateways sharing one signing key " +
+                    "means every token in the estate.",
                 AUTH_ACTIVITY
             )
             .isNotNull();
@@ -249,7 +274,7 @@ class SecurityConfigurationOrderTest {
         assertThat(rule)
             .as(
                 "%s is no longer ROLE_ADMIN alone. An operator reads the whole entity surface of " +
-                "hc-admin-service and is deliberately refused here.",
+                    "hc-admin-service and is deliberately refused here.",
                 AUTH_ACTIVITY
             )
             .contains("hasAuthority(AuthoritiesConstants.ADMIN)")
@@ -273,8 +298,8 @@ class SecurityConfigurationOrderTest {
         assertThat(authActivity)
             .as(
                 "%s is now BELOW the blanket %s rule, so authenticated() decides it first and the " +
-                "admin-only rule is dead code that reads as a guarantee. Every account in the estate " +
-                "holds ROLE_USER.",
+                    "admin-only rule is dead code that reads as a guarantee. Every account in the estate " +
+                    "holds ROLE_USER.",
                 AUTH_ACTIVITY,
                 BLANKET_API
             )
@@ -349,18 +374,17 @@ class SecurityConfigurationOrderTest {
      */
     @Test
     void aCosmeticReformatDoesNotChangeWhatTheRuleSays() {
-        String wrapped =
-            """
-            authorizeExchange(authz -> authz
-                .pathMatchers(
-                    "/api/auth-activity/**"
+        String wrapped = """
+        authorizeExchange(authz -> authz
+            .pathMatchers(
+                "/api/auth-activity/**"
+            )
+                .hasAuthority(
+                    AuthoritiesConstants.ADMIN
                 )
-                    .hasAuthority(
-                        AuthoritiesConstants.ADMIN
-                    )
-                .pathMatchers("/api/**").authenticated()
-            );
-            """;
+            .pathMatchers("/api/**").authenticated()
+        );
+        """;
 
         assertThat(ruleIn(wrapped, AUTH_ACTIVITY))
             .as("a wrapped matcher must still be found and still read as admin-only")
@@ -380,17 +404,85 @@ class SecurityConfigurationOrderTest {
      */
     @Test
     void aCommentQuotingTheMatcherIsNotGradedAsTheMatcher() {
-        String quoted =
-            """
-            authorizeExchange(authz -> authz
-                // It stays .pathMatchers("/api/auth-activity/**").hasAuthority(AuthoritiesConstants.ADMIN) forever.
-                .pathMatchers("/api/auth-activity/**").hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.OPERATOR)
-                .pathMatchers("/api/**").authenticated()
-            );
-            """;
+        String quoted = """
+        authorizeExchange(authz -> authz
+            // It stays .pathMatchers("/api/auth-activity/**").hasAuthority(AuthoritiesConstants.ADMIN) forever.
+            .pathMatchers("/api/auth-activity/**").hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.OPERATOR)
+            .pathMatchers("/api/**").authenticated()
+        );
+        """;
 
         assertThat(ruleIn(quoted, AUTH_ACTIVITY))
             .as("the real rule has been widened to admit an operator, and the comment above it must not hide that")
             .contains("hasAnyAuthority");
+    }
+
+    // --- the ordering reader's own two cases (backlog item 78) ----------------------------------
+
+    /**
+     * <b>A comment quoting a matcher is not a rule.</b> The same fail-open shape as the case above,
+     * one reader along — except that this reader decides <em>order</em>, and order is what decides
+     * whether the admin-only rule is evaluated at all.
+     *
+     * <p>Both of the forms the previous whole-line {@code //} filter let through are here: a
+     * {@code /* ... *}{@code /} block, and a <em>trailing</em> {@code //}, each quoting a full
+     * {@code .pathMatchers("/api/...")} call above a real rule. Neither may enter the indices. The
+     * blanket rule is also wrapped the way a formatter would wrap it, which pins the other half of
+     * {@link #matchersIn(String)}: the collapse is what makes these argument lists statable exactly.
+     */
+    @Test
+    void aCommentQuotingAMatcherIsNotCountedAsARule() {
+        String commented = """
+        authorizeExchange(authz -> authz
+            /* It used to read .pathMatchers("/api/auth-activity/**").hasAnyAuthority(ADMIN, OPERATOR),
+               below .pathMatchers("/api/**").authenticated(). Item 75 changed both. */
+            .pathMatchers("/api/auth-activity/**").hasAuthority(AuthoritiesConstants.ADMIN) // not .pathMatchers("/api/**")
+            .pathMatchers(
+                "/api/**"
+            ).authenticated()
+        );
+        """;
+
+        assertThat(matchersIn(commented))
+            .as(
+                "two rules are stated here and three more matcher calls are quoted in comments — two in " +
+                    "a block comment, one trailing. Only the rules may be counted, and the wrapped blanket " +
+                    "matcher must still be read as %s.",
+                BLANKET_API
+            )
+            .containsExactly('"' + AUTH_ACTIVITY + '"', '"' + BLANKET_API + '"');
+    }
+
+    /**
+     * <b>And the consequence, stated as itself.</b> The rules below are inverted — the admin-only
+     * matcher sits <em>under</em> the blanket one, so it is never evaluated and
+     * {@code /api/auth-activity/**} is reachable by any authenticated caller, in an estate where three
+     * gateways share one signing key. A comment above them asserts the correct order in prose.
+     *
+     * <p>A reader that counts that comment sees the right order and passes, which is the whole of
+     * backlog item 78: of this file's two comment strippers, the weaker one guarded the more
+     * consequential property.
+     */
+    @Test
+    void aCommentCannotHideAnInvertedOrder() {
+        String inverted = """
+        authorizeExchange(authz -> authz
+            /* It must stay .pathMatchers("/api/auth-activity/**").hasAuthority(AuthoritiesConstants.ADMIN)
+               above .pathMatchers("/api/**").authenticated(). */
+            .pathMatchers("/api/**").authenticated()
+            .pathMatchers("/api/auth-activity/**").hasAuthority(AuthoritiesConstants.ADMIN)
+        );
+        """;
+
+        List<String> matchers = matchersIn(inverted);
+
+        assertThat(indexOf(matchers, AUTH_ACTIVITY))
+            .as(
+                "%s is stated BELOW the blanket %s rule here, and the comment above them must not hide " +
+                    "that — a reader that grades prose as rules reports this chain as correctly ordered.",
+                AUTH_ACTIVITY,
+                BLANKET_API
+            )
+            .isGreaterThan(indexOf(matchers, BLANKET_API));
     }
 }
