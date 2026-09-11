@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.stream.Collectors;
 import net.jojoaddison.domain.LoginOutcome;
+import net.jojoaddison.management.LoginMetersService;
 import net.jojoaddison.security.Account;
 import net.jojoaddison.service.LoginAttemptRecorder;
 import net.jojoaddison.web.rest.vm.LoginVM;
@@ -53,14 +54,18 @@ public class AuthenticateController {
 
     private final LoginAttemptRecorder loginAttemptRecorder;
 
+    private final LoginMetersService loginMetersService;
+
     public AuthenticateController(
         JwtEncoder jwtEncoder,
         ReactiveAuthenticationManager authenticationManager,
-        LoginAttemptRecorder loginAttemptRecorder
+        LoginAttemptRecorder loginAttemptRecorder,
+        LoginMetersService loginMetersService
     ) {
         this.jwtEncoder = jwtEncoder;
         this.authenticationManager = authenticationManager;
         this.loginAttemptRecorder = loginAttemptRecorder;
+        this.loginMetersService = loginMetersService;
     }
 
     /**
@@ -99,6 +104,21 @@ public class AuthenticateController {
      * answers nothing — twenty failures is a bad afternoon on a busy console and an incident on a
      * quiet one — and the success row is also what says whether whoever was guessing eventually got
      * in.
+     *
+     * <h2>⚠ Two things are written per attempt, and they carry deliberately different amounts</h2>
+     *
+     * <p>Backlog item 80 added {@link LoginMetersService} beside the recorder: the collection keeps
+     * the exact login for {@code GET /api/auth-activity}, the counter keeps a bounded
+     * {@code outcome} label for Grafana, and <b>nothing carrying a subject goes anywhere near the
+     * counter</b> — the metric leaves this process on an OTLP push into an estate-wide store that
+     * none of {@link net.jojoaddison.domain.LoginAttempt}'s four safeguards reaches.
+     *
+     * <p>Both are incremented <em>here</em> rather than inside the recorder, and that is not
+     * duplication for its own sake. The recorder writes nothing at all for a blank login, on the
+     * argument that a row adding to a total and naming nobody is worse than no row; the counter has
+     * no subject to be missing and must count that attempt like any other. Folding the increment into
+     * the recorder would make the metric inherit a rule written for the collection, silently.
+     * {@code LoginMetersIT} pins both increments to this seam.
      */
     @PostMapping("/authenticate")
     public Mono<ResponseEntity<JWTToken>> authorize(@Valid @RequestBody Mono<LoginVM> loginVM) {
@@ -108,8 +128,14 @@ public class AuthenticateController {
                 return authenticationManager
                     .authenticate(new UsernamePasswordAuthenticationToken(enteredLogin, login.getPassword()))
                     .flatMap(auth -> Mono.fromCallable(() -> this.createToken(auth, login.isRememberMe())))
-                    .doOnNext(issued -> loginAttemptRecorder.record(enteredLogin, LoginOutcome.SUCCEEDED))
-                    .doOnError(refused -> loginAttemptRecorder.record(enteredLogin, LoginOutcome.FAILED));
+                    .doOnNext(issued -> {
+                        loginAttemptRecorder.record(enteredLogin, LoginOutcome.SUCCEEDED);
+                        loginMetersService.trackLoginSuccess();
+                    })
+                    .doOnError(refused -> {
+                        loginAttemptRecorder.record(enteredLogin, LoginOutcome.FAILED);
+                        loginMetersService.trackLoginRefused();
+                    });
             })
             .map(jwt -> {
                 HttpHeaders httpHeaders = new HttpHeaders();
