@@ -3,10 +3,30 @@
 # Reconciles this repository's `main` against the container registry and reports every commit whose
 # Release ran and produced no image.
 #
-# This file is BYTE-IDENTICAL in hc-admin-gateway, hc-admin-service and hc-admin-app. Nothing checks
-# that, so if you change one, change all three — it carries no per-repo constant, precisely so that
-# staying identical costs nothing. IMAGE_NAME is the one value that differs between them and each
-# workflow supplies it; see the note on IMAGE_NAME below.
+# This file is KEPT IN STEP BY HAND across hc-admin-gateway, hc-admin-service and hc-admin-app.
+# Nothing enforces that, so what follows is a convention and NOT a fact about the tree you are
+# holding: if you change one, change all three, and then prove it rather than asserting it —
+#
+#   md5sum {gateway,api,app}/.github/release-audit.sh    # from the hc-admin workspace root
+#
+# (the api/ directory holds hc-admin-service; the workspace directory names are not the repo names.)
+# The file carries no per-repo constant, precisely so that staying in step costs nothing. IMAGE_NAME
+# is the one value that differs between them and each workflow supplies it; see the note on
+# IMAGE_NAME below.
+#
+# THE HEADER USED TO ASSERT BYTE-IDENTITY AS A STANDING FACT, and it was changed on 2026-09-11
+# (backlog item 71) because nothing held it true. Item 68 had to propagate a change by hand and
+# discovered the third copy with md5sum rather than from any check — an entry that named two repos
+# when the file lives in three. Two mechanical shapes were considered and rejected:
+#
+#   * A checksum committed beside the file and asserted by each repo's CI. Updating it is the same
+#     manual act as updating the file, so it catches an accidental divergence and not a deliberate
+#     one-repo edit — and it is a FOURTH artifact to keep in step, which is this problem again.
+#   * One repo owning the file and the others vendoring it. The only shape that converges, and it
+#     needs a cross-repo token. HC_ADMIN_CI_TOKEN has already lapsed once, failing three Release
+#     runs and leaving two commits on main with no image at all (backlog item 44).
+#
+# So the convention is accepted and the claim is dropped. Do not restore the flat assertion.
 #
 # ===================================================================================================
 # WHY THIS IS A RECONCILIATION AND NOT A FAILURE HANDLER
@@ -174,7 +194,8 @@ set -euo pipefail
 # unguarded, widen this.
 #
 # The same guard, with the same reasoning, is in hc-admin-app's gate-audit.sh. Change one, look at the
-# other — and this file is byte-identical in three repositories, so changing it is changing all three.
+# other — and this file is kept in step by hand across three repositories, so changing it here is a
+# change owed to all three; see the header.
 #
 REPORTED_RED=''
 
