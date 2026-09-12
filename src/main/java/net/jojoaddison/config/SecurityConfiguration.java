@@ -132,6 +132,36 @@ public class SecurityConfiguration {
                     // Mirrors the downstream service's own read/write split (see the api's
                     // SecurityConfiguration). The service enforces this itself — this is the outer
                     // half of defence in depth, not the only gate.
+                    //
+                    // ⚠ IT DOES NOT MIRROR THE API'S ROLE_VENDOR CARVE-OUT, AND THAT IS A DECISION
+                    // (backlog item 87, decided 2026-09-12) RATHER THAN AN OVERSIGHT.
+                    //
+                    // hc-admin's api gained `GET /api/vendors` for ROLE_VENDOR in item 31, scoped
+                    // server-side to the caller's own row. This rule is deliberately NOT widened to
+                    // match, so a ROLE_VENDOR token reaching this gateway is 403 before the api is
+                    // asked. The precedent is four screens up in this same file: the api's
+                    // `/api/professionals/me/**` carve-out is not mirrored here either, because a
+                    // clinician has no business in the admin console and reaches their roster through
+                    // hc-professional's own gateway. A vendor is the same shape.
+                    //
+                    // WHY IT IS SAFE TODAY, which is the half a reader cannot see from here:
+                    // hc-vendor's `application.yml` defaults `adminservice.base-url` to
+                    // `http://localhost:5507` with `vendors-path: /api/vendors` — STRAIGHT AT THE
+                    // SERVICE, not through this gateway. So the carve-out item 31 built sits on the
+                    // path hc-vendor actually uses, and this rule is never in that request's way.
+                    //
+                    // WHAT WOULD CHANGE IT, and the cost if nobody notices: the moment a deployment
+                    // points that base URL at this gateway with the `/services/adminservice` prefix —
+                    // which hc-vendor's own config comment describes as a supported shape —
+                    // `GET /api/vendors/by-account` starts returning 403 from HERE, and
+                    // `AdminVendorClient` surfaces it as DIRECTORY_ERROR(403). That is
+                    // INDISTINGUISHABLE from the ROLE_VENDOR grant having been removed in the api, so
+                    // an operator debugging it will read item 31's authority rule and find nothing
+                    // wrong with it. Check which URL the caller used before touching the api.
+                    //
+                    // It is the same misdirection as the 401 trap item 31 records one layer along: an
+                    // unshared JWT_BASE64_SECRET also surfaces as a DIRECTORY_ERROR from this stack
+                    // about a rule that is perfectly correct.
                     .pathMatchers(HttpMethod.GET, "/services/**")
                         .hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.OPERATOR)
                     .pathMatchers("/services/**").hasAuthority(AuthoritiesConstants.ADMIN)
