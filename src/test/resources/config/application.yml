@@ -86,7 +86,12 @@ server:
 # ===================================================================
 jhipster:
   clientApp:
-    name: 'AdminGatewayApp'
+    # Must track src/main/resources/config/application.yml, which argues the value at length.
+    # This file shadows that one on the test classpath, so AlertHeaderNameIT reads THIS value —
+    # leave the two disagreeing and the suite pins a name production does not emit. The shipped
+    # file is pinned separately by ConfigurationBindingTest.clientAppNameIsTheNameTheConsoleReads,
+    # which reads src/main/resources off disk for that reason. Backlog item 95.
+    name: 'hcAdminApp'
   mail:
     from: adminGateway@localhost.com
     base-url: http://127.0.0.1:8080
