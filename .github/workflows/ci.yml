@@ -126,12 +126,31 @@ jobs:
       # never drifted on either package. Reformatting without adding this step would buy one clean
       # afternoon and re-open on the next stale install.
       #
-      # THE GLOB IS NARROWER THAN `npm run prettier:check`, AND THAT IS MEASURED, NOT AN OVERSIGHT.
-      # The repo script covers {,**/}*.{md,json,yml,html,java}, and on the day this landed exactly
-      # one non-Java file failed it: admin-gateway.md, the historical plan doc, short one trailing
-      # newline. Item 66's scope was the Java, so widening this to the script means fixing that file
-      # first — do it, and then widen, because .jhipster/*.json, the yml config and the markdown are
-      # ungated by the line below.
+      # THE STEP RUNS THE REPO SCRIPT, NOT A COPY OF HALF ITS GLOB — item 96, 2026-09-13.
+      # It ran `npx prettier --check "src/**/*.java"` until then, while `npm run prettier:format`
+      # covered {,**/}*.{md,json,yml,html,java}, so the 52 non-Java files in that set were formatted
+      # by the pre-commit hook and gated by nothing. Repeating half a glob here is what let the two
+      # drift; `npm run prettier:check` is ONE definition in package.json read by both the hook and
+      # this gate, which closes the class rather than this instance of it. If the covered set needs
+      # to change, change the script — do not re-inline a glob here.
+      #
+      # The blocker item 66 recorded was re-measured rather than carried across: repo-wide,
+      # `admin-gateway.md` alone still failed — though not for the reason that note gave. It is not
+      # short a trailing newline; its route-name table is padded to a width Prettier 3.9.6 computes
+      # differently, because the cells carry ✅ ⚠ ❌ and the pinned formatter counts those columns
+      # its own way. Reformatted in the same commit, so widening reddens nothing. There is no
+      # .jhipster/ directory in this repository, so that part of the old note never applied here.
+      #
+      # The widened gate was watched catching what the narrow one could not: against a deliberately
+      # malformed src/main/resources/hc-admin-gw-data.json, `npx prettier --check "src/**/*.java"`
+      # reported "All matched files use Prettier code style!" and `npm run prettier:check` failed
+      # naming the file.
+      #
+      # Still ungated, stated rather than implied away: .lintstagedrc.cjs and
+      # src/main/docker/mongodb/scripts/init_replicaset.js are Prettier-supported and sit outside
+      # the script's own glob, so neither the hook nor this step covers them. pom.xml, checkstyle.xml
+      # and logback-spring.xml are outside it too and Prettier has no XML parser, so they are not
+      # candidates. "The script" is not "everything".
       #
       # `npm ci`, not `npm install`: the lockfile is the input, and a gate that resolves different
       # versions than the pre-commit hook is not a gate — it is a second opinion.
@@ -150,7 +169,7 @@ jobs:
         run: npm ci
 
       - name: Prettier
-        run: npx prettier --check "src/**/*.java"
+        run: npm run prettier:check
 
       - name: Upload surefire and failsafe reports
         if: failure()

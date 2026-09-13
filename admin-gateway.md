@@ -94,11 +94,11 @@ It matches the Consul `service-name` of `hc-admin-service`, and therefore the ro
 
 Three spellings are currently in circulation and only one resolves:
 
-| Where                                            | Value                          | Resolves?                                          |
-| ------------------------------------------------ | ------------------------------ | -------------------------------------------------- |
-| Consul registration / discovery locator          | `/services/hcadminservice/**`  | ✅ yes                                             |
+| Where                                            | Value                          | Resolves?                                         |
+| ------------------------------------------------ | ------------------------------ | ------------------------------------------------- |
+| Consul registration / discovery locator          | `/services/hcadminservice/**`  | ✅ yes                                            |
 | Gateway static dev route (`application-dev.yml`) | `/services/admin-service/**`   | ⚠ dev profile only, hardcoded to `localhost:5507` |
-| Angular dashboard entity services                | `/services/hcadminservice/...` | ❌ nothing serves this                             |
+| Angular dashboard entity services                | `/services/hcadminservice/...` | ❌ nothing serves this                            |
 
 When reconciling the mismatch, **this document has the right name**. The fix belongs in the frontend's `getEndpointFor(...)` calls.
 
