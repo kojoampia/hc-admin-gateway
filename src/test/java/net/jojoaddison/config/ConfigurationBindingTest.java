@@ -131,6 +131,79 @@ class ConfigurationBindingTest {
     }
 
     /**
+     * <b>The shipped {@code jhipster.clientApp.name} is the name the console reads.</b> Backlog item
+     * 95.
+     *
+     * <p>{@code HeaderUtil} builds every alert header as {@code X-<clientApp.name>-alert} /
+     * {@code -error} / {@code -params}, and {@code app/src/main/webapp/app/shared/jhipster/constants.ts}
+     * reads {@code x-hcadminapp-*} and nothing else. Until 2026-09-13 this file said
+     * {@code AdminGatewayApp} — derived from {@code .yo-rc.json}'s {@code baseName: adminGateway} —
+     * so every alert this gateway sent, success and failure alike, arrived under a name the console
+     * does not look for and was silently dropped.
+     *
+     * <p><b>This sweeps all three shipped files rather than asserting the one that sets it</b>,
+     * because the defect this estate repeats most is a value corrected in the base file and
+     * overridden in the profile that actually runs. Neither {@code application-dev.yml} nor
+     * {@code application-prod.yml} carries the key today; if either gains it, it has to carry the
+     * same value or this goes red.
+     *
+     * <p><b>Why here rather than only in an IT.</b> The whole suite runs against
+     * {@code src/test/resources/config/application.yml}, which shadows the main file on the test
+     * classpath — so {@code AlertHeaderNameIT}, which asserts the same literal on a real response,
+     * would stay green with production emitting {@code X-AdminGatewayApp-alert}. This test reads the
+     * file that ships. <b>Neither half is sufficient alone</b>: this one never sees a response, and
+     * that one never sees the shipped file.
+     *
+     * <p>The expectation is a <b>literal</b>, deliberately. {@code hcAdminApp} diverges from
+     * {@code .yo-rc.json}'s {@code baseName}, so a JHipster regeneration rewrites this property back
+     * — which is how the mismatch survived from the generator's first commit. A test deriving the
+     * expectation from the property would pass against whatever the regeneration put there.
+     *
+     * <p><b>Watched red before the value moved:</b>
+     * {@code expected: "hcAdminApp" but was: "AdminGatewayApp"}.
+     *
+     * <p>The name is asked for as {@code jhipster.client-app.name}, not as the camel-case
+     * {@code jhipster.clientApp.name} the yaml writes. {@code Binder} canonicalises before it
+     * matches and rejects an upper-case letter outright —
+     * {@code InvalidConfigurationPropertyNameException: 'jhipster.clientApp.name' is not valid},
+     * which is an <em>error</em> rather than a failure and so reads as a broken test rather than as
+     * a wrong value. Relaxed binding is what resolves the two to each other, here and at runtime.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = { "config/application.yml", "config/application-dev.yml", "config/application-prod.yml" })
+    void clientAppNameIsTheNameTheConsoleReads(String resource) throws IOException {
+        binderFor(resource)
+            .bind("jhipster.client-app.name", String.class)
+            .ifBound(name ->
+                assertThat(name)
+                    .as(
+                        "%s sets jhipster.clientApp.name, which decides every alert header name this gateway emits " +
+                            "(X-<name>-alert / -error / -params). app/src/main/webapp/app/shared/jhipster/constants.ts " +
+                            "reads x-hcadminapp-alert, x-hcadminapp-error and x-hcadminapp-params and nothing else, so " +
+                            "any other value means the console drops the alert without a trace (backlog item 95). If " +
+                            "this went red after a JHipster regeneration, it rewrote the value from .yo-rc.json's " +
+                            "baseName, adminGateway.",
+                        resource
+                    )
+                    .isEqualTo("hcAdminApp")
+            );
+    }
+
+    /**
+     * The key has to be set <em>somewhere</em>, or the sweep above passes over an empty set and
+     * three {@code @Value("${jhipster.clientApp.name}")} injections fail at startup instead.
+     */
+    @Test
+    void clientAppNameIsSetAtAll() throws IOException {
+        assertThat(binderFor("config/application.yml").bind("jhipster.client-app.name", String.class).isBound())
+            .as(
+                "config/application.yml must set jhipster.clientApp.name — AuthorityResource, UserResource and " +
+                    "ExceptionTranslator all inject it with no default, so an unset key is a startup failure"
+            )
+            .isTrue();
+    }
+
+    /**
      * Read from {@code src/main/resources} on disk, NOT from the classpath.
      *
      * <p>This is the difference between a guard and a decoration. Under surefire,

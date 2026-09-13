@@ -292,7 +292,26 @@ info:
 
 jhipster:
   clientApp:
-    name: 'AdminGatewayApp'
+    # DELIBERATELY NOT DERIVED FROM .yo-rc.json's baseName, WHICH IS adminGateway.
+    #
+    # HeaderUtil builds every alert header from this value — X-<name>-alert, -error, -params — and
+    # hc-admin-app's shared/jhipster/constants.ts reads x-hcadminapp-* and nothing else. This said
+    # AdminGatewayApp until 2026-09-13, the api said hcAdminServiceApp, and the console matched
+    # neither: three names, and one console constant cannot match two differently-named services.
+    # So no alert this gateway sent was ever read — not just the failure ones. The success header
+    # is the same mechanism, which is why a user creation or a password change has never raised a
+    # confirmation toast on the login, account or user-management screens.
+    #
+    # The architect's decision (backlog item 95) is one name across both services: hcAdminApp, what
+    # the console already reads. hc-admin-service is being set to the same value.
+    #
+    # ⚠ A JHipster regeneration rewrites this line from baseName and silently reverts the fix —
+    # that is exactly how the mismatch survived from the generator's first commit. Two tests pin
+    # the literal so the revert cannot be silent: ConfigurationBindingTest
+    # .clientAppNameIsTheNameTheConsoleReads reads this file off disk, and AlertHeaderNameIT
+    # asserts the emitted names on a real response. Both name x-hcadminapp-* in their failure
+    # messages. Do not "restore" this to match baseName.
+    name: 'hcAdminApp'
   # By default CORS is disabled. Uncomment to enable.
   # cors:
   #   allowed-origins: "http://localhost:8100,http://localhost:9000"
