@@ -68,6 +68,102 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler implemen
         return handleExceptionInternal((Exception) ex, pdCause, buildHeaders(ex), HttpStatusCode.valueOf(pdCause.getStatus()), request);
     }
 
+    /**
+     * Puts the failure-alert headers back on a {@link BadRequestAlertException}.
+     *
+     * <h2>Why {@link #handleAnyException} never gets the chance</h2>
+     *
+     * <p>{@link #handleAnyException} calls {@link #buildHeaders} and <b>never runs for this family</b>.
+     * {@code BadRequestAlertException} extends {@link ErrorResponseException}, and
+     * {@link ResponseEntityExceptionHandler#handleException} declares a handler for that which is
+     * <em>more specific</em> than this advice's {@code @ExceptionHandler(Throwable)}, so Spring
+     * dispatches there and answers with the exception's own headers — which are a freshly constructed,
+     * permanently empty {@code HttpHeaders} ({@code ErrorResponseException:46}). {@code buildHeaders}
+     * built a perfectly good pair of headers that nothing ever received. Backlog item 97, measured on
+     * a real refused write through this stack before the fix:
+     *
+     * <pre>
+     * [alert-header] refused write, emitted alert headers = []
+     * </pre>
+     *
+     * <h2>Why an override rather than a second {@code @ExceptionHandler}</h2>
+     *
+     * <p>A {@code @ExceptionHandler(BadRequestAlertException.class)} on this advice would also work — a
+     * subclass outranks its parent in {@code ExceptionHandlerMethodResolver}. It is <b>not</b> what
+     * this does, because <em>competing for dispatch is what broke this in the first place</em>: the
+     * advice claimed {@code Throwable} and quietly lost to a framework handler it did not know about.
+     * {@link ResponseEntityExceptionHandler#handleException} is {@code final}, so overriding this
+     * protected seam is the framework's own answer: one dispatch path rather than two, and any future
+     * {@code ErrorResponseException} that {@code buildHeaders} learns about is covered without a third
+     * handler.
+     *
+     * <h2>The reactive seam is the same shape as the servlet one, which was not a given</h2>
+     *
+     * <p>This is the fix {@code hc-admin-service} took for the same defect (backlog item 91), and that
+     * repository is Spring MVC while this one is WebFlux — a different
+     * {@code ResponseEntityExceptionHandler} in a different package with a different surface. It was
+     * read before being copied:
+     * {@code org.springframework.web.reactive.result.method.annotation.ResponseEntityExceptionHandler}
+     * (spring-webflux 7.0.8) declares {@code handleException} {@code final}, dispatches
+     * {@code ErrorResponseException} to {@code handleErrorResponseException(ex, ex.getHeaders(),
+     * ex.getStatusCode(), exchange)}, and that method delegates to {@code handleExceptionInternal}.
+     * Same seam, same contract, {@code Mono} and {@code ServerWebExchange} in place of the servlet
+     * types.
+     *
+     * <h2>Two things this deliberately does not do</h2>
+     *
+     * <p><b>It does not touch the body.</b> {@code BadRequestAlertException} sets {@code message} and
+     * {@code params} on its own {@code ProblemDetail} and those are unchanged. Once the headers arrive
+     * the console takes its {@code errorKey} branch and builds {@code { entityName }} itself from the
+     * {@code -params} header, so the body's {@code params} goes back to being unread there. That is
+     * the intended outcome, not a regression.
+     *
+     * <p><b>It does not go through {@link #handleAnyException}.</b> Routing this family there would
+     * re-derive a problem detail the exception already carries, and would put back the two-handler
+     * race this override exists to avoid.
+     *
+     * <h2>One visible side effect</h2>
+     *
+     * <p>{@code HeaderUtil.createFailureAlert} opens with {@code log.error("Entity processing failed,
+     * {}", defaultMessage)}, so every refused write now logs at ERROR where it logged nothing before.
+     *
+     * <p><b>And it logs more than the string {@code buildHeaders} passes it.</b> That argument is
+     * {@code ex.getMessage()}, which on an {@code ErrorResponseException} is the status plus the whole
+     * rendered {@code ProblemDetail} — observed on this repository's own suite:
+     *
+     * <pre>
+     * Entity processing failed, 400 BAD_REQUEST, ProblemDetailWithCause[type='…/problem/email-already-used',
+     *   title='Email is already in use!', status=400, detail='null', instance='null',
+     *   properties='{message=error.emailexists, params=userManagement}']
+     * </pre>
+     *
+     * <p>So the thing to read before adding a {@code BadRequestAlertException} is not only its default
+     * message but everything on its problem detail — {@code title}, {@code detail} and every property.
+     * All four raise sites in this repository were read before accepting the change
+     * ({@code AuthorityResource}, {@code UserResource}, and the {@code EmailAlreadyUsedException} /
+     * {@code LoginAlreadyUsedException} subclasses) and every field on all of them is a constant
+     * naming no login, address or id. Note that the log statement itself lives in the
+     * jhipster-framework jar, where no sweep in this repository can see it: a future detail
+     * interpolating a subject would be leaked through a line nothing here reads.
+     */
+    @Override
+    protected Mono<ResponseEntity<Object>> handleErrorResponseException(
+        ErrorResponseException ex,
+        HttpHeaders headers,
+        HttpStatusCode statusCode,
+        ServerWebExchange request
+    ) {
+        HttpHeaders alertHeaders = buildHeaders(ex);
+        if (alertHeaders == null) return super.handleErrorResponseException(ex, headers, statusCode, request);
+
+        // A copy rather than an addition to the exception's own headers: the alert headers belong to
+        // this response, not to the exception instance, and the parameter is documented @Nullable.
+        HttpHeaders merged = new HttpHeaders();
+        if (headers != null) merged.putAll(headers);
+        merged.putAll(alertHeaders);
+        return super.handleErrorResponseException(ex, merged, statusCode, request);
+    }
+
     @Nullable
     @Override
     protected Mono<ResponseEntity<Object>> handleExceptionInternal(

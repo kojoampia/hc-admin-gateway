@@ -42,22 +42,24 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  * header. So no confirmation has ever been shown for a user creation, a user deletion or any other
  * write this gateway owns — an administrator saving a record sees nothing at all.
  *
- * <h2>Why a success response rather than a refused one</h2>
+ * <h2>Both paths, and the second one arrived a day after the first</h2>
  *
- * <p>Item 91's precedent on the api pins the name on a {@code BadRequestAlertException}. <b>That
- * surface does not work here</b>, measured on 2026-09-13 against a real response from a
- * {@code BadRequestAlertException} raised through this stack: it carried <b>no {@code X-}-prefixed
- * alert header of any kind</b>, so there was no name on the wire to pin. That is item 91's own
- * defect — {@code BadRequestAlertException extends ErrorResponseException}, for which
- * {@code ResponseEntityExceptionHandler} declares a handler more specific than this advice's
- * {@code @ExceptionHandler(Throwable)}, so {@code ExceptionTranslator.buildHeaders} is never entered
- * — present in this repository and fixed only in the api. Item 91's closing note said to check the
- * sibling gateways; this is that check, and it is <b>reported rather than fixed here</b>, being a
- * different item with a different blast radius.
+ * <p>This class opened with the success case alone, and said so at length: item 91's precedent on the
+ * api pins the name on a {@code BadRequestAlertException}, and <b>that surface did not work here</b>
+ * — measured on 2026-09-13 against a real response from one raised through this stack, it carried
+ * <b>no {@code X-}-prefixed alert header of any kind</b>, so there was no name on the wire to pin.
+ * That was item 91's own defect, live in this repository and fixed only in the api, and it was
+ * reported rather than fixed at the time because it was a different item with a different blast
+ * radius.
  *
- * <p>So the name is pinned where this gateway really does emit one: {@code HeaderUtil} on the
- * success path. It is the same {@code jhipster.clientApp.name} on both paths, so one value settles
- * both — and this is the path an operator actually sees.
+ * <p><b>That item is 97 and it closed on 2026-09-14</b>, so the refused-write case below is now
+ * possible and is here. The two belong together: they are the same
+ * {@code jhipster.clientApp.name} on the same {@code HeaderUtil}, and the asymmetry between them is
+ * the thing an operator would actually have met — <em>confirmations appearing while refusals stay
+ * mute</em>, which reads as "errors are broken" rather than as one unfinished item.
+ *
+ * <p>The dispatch defect item 97 fixed is argued where the fix is,
+ * {@code ExceptionTranslator.handleErrorResponseException}; it is not restated here.
  *
  * <h2>Why it is its own class, and why the expectation is a literal</h2>
  *
@@ -83,12 +85,25 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  *
  * <h2>Watched red before the value moved</h2>
  *
+ * <p>The success case, before {@code jhipster.clientApp.name} changed — a <em>wrong name</em>:
+ *
  * <pre>
  * [alert-header] emitted = [X-AdminGatewayApp-alert, X-AdminGatewayApp-params]
  * Expecting actual:
  *   ["X-AdminGatewayApp-alert", "X-AdminGatewayApp-params"]
  * to contain exactly (and in same order):
  *   ["X-hcAdminApp-alert", "X-hcAdminApp-params"]
+ * </pre>
+ *
+ * <p>The refused-write case, before item 97's override existed — <em>no name at all</em>, which is a
+ * different failure and reads differently:
+ *
+ * <pre>
+ * [alert-header] refused write, emitted alert headers = []
+ * Expecting actual:
+ *   []
+ * to contain exactly (and in same order):
+ *   ["X-hcAdminApp-error", "X-hcAdminApp-params"]
  * </pre>
  */
 @IntegrationTest
@@ -130,6 +145,71 @@ class AlertHeaderNameIT {
             authorityRepository.deleteById(createdAuthority).block();
             createdAuthority = null;
         }
+    }
+
+    @Test
+    void aRefusedWriteCarriesTheFailureAlertHeadersTheConsoleReads() throws Exception {
+        createdAuthority = "ROLE_AH_" + UUID.randomUUID();
+
+        webTestClient
+            .post()
+            .uri("/api/authorities")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(om.writeValueAsBytes(new Authority().name(createdAuthority)))
+            .exchange()
+            .expectStatus()
+            .isCreated();
+
+        // The same name a second time. AuthorityResource.createAuthority raises
+        // BadRequestAlertException("authority already exists", "adminAuthority", "idexists").
+        HttpHeaders headers = webTestClient
+            .post()
+            .uri("/api/authorities")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(om.writeValueAsBytes(new Authority().name(createdAuthority)))
+            .exchange()
+            .expectStatus()
+            .isBadRequest()
+            .returnResult(Void.class)
+            .getResponseHeaders();
+
+        List<String> emitted = headers
+            .headerNames()
+            .stream()
+            .filter(name -> ALERT_HEADER.matcher(name).matches())
+            .sorted()
+            .toList();
+
+        // Printed for the same reason the success case prints: a red run has to distinguish
+        // "misnamed" from "absent", and this case was born of the second. Every header name goes
+        // with it, because the answer to "was anything emitted at all" is the whole diagnosis here.
+        System.out.println("[alert-header] refused write, emitted alert headers = " + emitted);
+        System.out.println("[alert-header] refused write, all headers = " + headers.headerNames());
+        // Printed rather than asserted: restoring the alert headers must not change the media type of
+        // a refused write, and this is the line that would show it if it ever did.
+        System.out.println("[alert-header] refused write, content type = " + headers.getContentType());
+
+        assertThat(emitted)
+            .as(
+                "A refused write must carry the failure-alert headers the console reads. " +
+                    "app/src/main/webapp/app/shared/jhipster/constants.ts declares %s and %s; with neither on the " +
+                    "response getMessageFromHeaders finds no errorKey, falls to its error.message branch and the " +
+                    "operator sees no alert at all — while a SUCCESSFUL write, since backlog item 95, does show " +
+                    "one. If this went red as [] rather than as a wrong name: ExceptionTranslator's override of " +
+                    "handleErrorResponseException has been removed or bypassed, which is backlog item 97 " +
+                    "returning. If it went red on the name: a JHipster regeneration rewrote " +
+                    "jhipster.clientApp.name from .yo-rc.json's baseName (adminGateway), item 95.",
+                CONSOLE_ERROR_HEADER,
+                CONSOLE_PARAMS_HEADER
+            )
+            .containsExactly("X-hcAdminApp-error", "X-hcAdminApp-params");
+
+        assertThat(headers.getFirst(CONSOLE_ERROR_HEADER))
+            .as("%s carries the translation key the console resolves, not the default message", CONSOLE_ERROR_HEADER)
+            .isEqualTo("error.idexists");
+        assertThat(headers.getFirst(CONSOLE_PARAMS_HEADER))
+            .as("%s carries the entity name the console interpolates into {{ entityName }}", CONSOLE_PARAMS_HEADER)
+            .isEqualTo("adminAuthority");
     }
 
     @Test
