@@ -284,7 +284,7 @@
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-core</artifactId>
-            <version>4.2.38</version>
+            <version>4.2.39</version>
         </dependency>
         <dependency>
             <!-- Managed by Spring Boot 4 via micrometer BOM -->
