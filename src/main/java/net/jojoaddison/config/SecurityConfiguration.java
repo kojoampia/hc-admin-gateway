@@ -129,6 +129,44 @@ public class SecurityConfiguration {
                     .pathMatchers(HttpMethod.GET, "/services/professionalservice/**")
                         .hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.OPERATOR)
                     .pathMatchers("/services/professionalservice/**").hasAuthority(AuthoritiesConstants.ADMIN)
+                    // --- the sibling GATEWAY prefixes (item 122) ------------------------------------
+                    //
+                    // /services/hcpatientgateway/** and /services/hcprofessionalgateway/** are proxied
+                    // to another product's GATEWAY, not its service. The routes are env vars in
+                    // deploy/prod-server/compose.yml and quality/compose.yml, like every other route
+                    // here; Consul is enabled in production but the discovery locator is not, so
+                    // routing is static in both.
+                    //
+                    // ⚠ ROLE_ADMIN ALONE, ON EVERY VERB — deliberately NOT the ADMIN-or-OPERATOR-on-GET
+                    // split the four rules around this one use. Two reasons, and the first is the one
+                    // that would be missed:
+                    //
+                    //   1. The far side is @PreAuthorize(ADMIN) on every handler under /api/admin
+                    //      (UserResource in both sibling gateways). Admitting an operator here would
+                    //      relay a caller the sibling then refuses — a guard that disagrees with the
+                    //      server, which teaches the wrong rule and reads as a sibling outage.
+                    //   2. The response carries `login` and `email` exactly as they were entered. That
+                    //      is item 75's argument for /api/auth-activity/** being admin-alone, one
+                    //      product along.
+                    //
+                    // NO HttpMethod QUALIFIER, and that absence is the rule. A GET-scoped
+                    // hasAuthority here would let HEAD fall through to the blanket /services/** rule
+                    // below — Spring dispatches HEAD to a @GetMapping handler, and a body-less read of
+                    // an account path is still an existence oracle. The route's own Method=GET
+                    // predicate already refuses HEAD; this is the second layer, not a restatement.
+                    // The rule ships from gateway/ and the route from deploy/, with no shared gate,
+                    // so each layer must hold alone — a HEAD that 404s today is the route's predicate
+                    // working, not evidence that this rule's breadth is redundant.
+                    //
+                    // WHAT THIS RULE CANNOT DO is what the professionalservice comment above says at
+                    // length: it discriminates by AUTHORITY, never by issuer. One shared signing key,
+                    // no `iss` claim anywhere, so ADMIN here means an admin on ANY of the three stacks.
+                    //
+                    // It sits BELOW the readiness and v3/api-docs carve-outs for the same reason the
+                    // professionalservice rules do, and ABOVE the blanket /services/** rules or it is
+                    // never evaluated at all.
+                    .pathMatchers("/services/hcpatientgateway/**").hasAuthority(AuthoritiesConstants.ADMIN)
+                    .pathMatchers("/services/hcprofessionalgateway/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     // Mirrors the downstream service's own read/write split (see the api's
                     // SecurityConfiguration). The service enforces this itself — this is the outer
                     // half of defence in depth, not the only gate.
