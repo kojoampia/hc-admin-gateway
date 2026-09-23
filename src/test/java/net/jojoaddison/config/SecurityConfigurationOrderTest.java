@@ -55,6 +55,10 @@ class SecurityConfigurationOrderTest {
     private static final String API_DOCS = "/services/*/v3/api-docs";
     private static final String BLANKET = "/services/**";
 
+    /** Backlog item 122 — the sibling GATEWAY prefixes. Admin-alone, unqualified, above the blanket rules. */
+    private static final String PATIENT_GATEWAY = "/services/hcpatientgateway/**";
+    private static final String PROFESSIONAL_GATEWAY = "/services/hcprofessionalgateway/**";
+
     /** Backlog item 75 — admin-only, and above the rule below it. */
     private static final String AUTH_ACTIVITY = "/api/auth-activity/**";
 
@@ -158,6 +162,21 @@ class SecurityConfigurationOrderTest {
         assertThat(professional)
             .as("expected exactly two %s matchers — the GET rule and the catch-all — but found %s", PROFESSIONAL, professional)
             .hasSize(2);
+
+        // The same premise for the two sibling GATEWAY prefixes (item 122). Their comment block
+        // quotes both path strings in prose, so a leak here would inflate these counts too — and
+        // every ordering assertion below on them would then be grading prose. Exactly ONE each,
+        // not two: they are deliberately unqualified, with no GET twin (see
+        // theSiblingGatewayPrefixesAreNotMethodScoped for why).
+        for (String prefix : List.of(PATIENT_GATEWAY, PROFESSIONAL_GATEWAY)) {
+            List<String> stated = matchersInOrder()
+                .stream()
+                .filter(arguments -> arguments.contains(prefix))
+                .toList();
+            assertThat(stated)
+                .as("expected exactly one %s matcher — the unqualified admin-alone rule — but found %s", prefix, stated)
+                .hasSize(1);
+        }
     }
 
     /**
@@ -239,6 +258,168 @@ class SecurityConfigurationOrderTest {
                 BLANKET
             )
             .isLessThan(blanket);
+    }
+
+    // --- the sibling GATEWAY prefixes (backlog item 122) ----------------------------------------
+
+    /**
+     * <strong>The rules exist at all.</strong> Same shape and same reasoning as
+     * {@link #theCrossStackPrefixIsPinnedExplicitly()}: delete both sibling-gateway matchers and the
+     * blanket {@code /services/**} rules still admit an admin — but they also admit an operator on
+     * {@code GET}, so here deletion is an observable <em>widening</em> as well as an unpinning. The
+     * far side is {@code @PreAuthorize(ADMIN)} on every handler under {@code /api/admin}, so the
+     * widened caller is relayed and then refused — a guard that disagrees with the server, reading
+     * as a sibling outage.
+     */
+    @Test
+    void theSiblingGatewayPrefixesAreStatedExplicitly() throws IOException {
+        List<String> matchers = matchersInOrder();
+
+        for (String prefix : List.of(PATIENT_GATEWAY, PROFESSIONAL_GATEWAY)) {
+            assertThat(indexOf(matchers, prefix))
+                .as(
+                    "SecurityConfiguration no longer states %s explicitly. Deleting it is not neutral: " +
+                        "the blanket /services/** rules below admit an operator on GET, so the sibling's " +
+                        "account surface — logins and emails as they were entered — widens from admin-alone " +
+                        "to admin-or-operator, silently, on a green build. Restore the rule rather than " +
+                        "deleting this test.",
+                    prefix
+                )
+                .isGreaterThan(-1);
+        }
+    }
+
+    /**
+     * <strong>Admin alone, on every verb.</strong> Read over {@code ruleFor}, which
+     * {@link #theSiblingGatewayPrefixesAreNotMethodScoped()} makes trustworthy: that case pins each
+     * prefix to exactly one matcher whose argument list is the bare quoted path, so the exact
+     * {@code .pathMatchers("<path>")} search here cannot be shadowed by a method-scoped twin it
+     * cannot see.
+     */
+    @Test
+    void theSiblingGatewayPrefixesAreAdminAlone() throws IOException {
+        for (String prefix : List.of(PATIENT_GATEWAY, PROFESSIONAL_GATEWAY)) {
+            String rule = ruleFor(prefix);
+
+            assertThat(rule)
+                .as(
+                    "SecurityConfiguration no longer states %s as an unqualified matcher. It is ROLE_ADMIN " +
+                        "alone on every verb — the far side refuses an operator on every handler under " +
+                        "/api/admin, and the response carries logins and emails as they were entered " +
+                        "(item 75's argument, one product along).",
+                    prefix
+                )
+                .isNotNull();
+
+            assertThat(rule)
+                .as(
+                    "%s is no longer ROLE_ADMIN alone. An operator admitted here is relayed to the sibling " +
+                        "and refused by its @PreAuthorize(ADMIN) handlers — a guard that disagrees with the " +
+                        "server, which teaches the wrong rule and reads as a sibling outage.",
+                    prefix
+                )
+                .contains("hasAuthority(AuthoritiesConstants.ADMIN)")
+                .doesNotContain("hasAnyAuthority");
+        }
+    }
+
+    /**
+     * <strong>Unqualified — no {@code HttpMethod} on the matcher.</strong> A {@code GET}-scoped rule
+     * here would let {@code HEAD} fall through to the blanket {@code /services/**} rule below, which
+     * admits an operator; Spring dispatches {@code HEAD} to a {@code @GetMapping} handler, and a
+     * body-less read of an account path is still an existence oracle. The route's own
+     * {@code Method=GET} predicate lives in another repository ({@code deploy/}), with no shared
+     * gate, so this layer must hold alone.
+     *
+     * <p><strong>Asserted as argument-list EQUALITY, not {@code doesNotContain("HttpMethod")}.</strong>
+     * A static import of {@code HttpMethod.GET} plus {@code pathMatchers(GET, path)} method-scopes
+     * the rule with the string {@code HttpMethod} appearing nowhere — {@code doesNotContain} would
+     * pass today and fail open on exactly the future edit it exists to catch. The argument lists
+     * from {@link #matchersIn(String)} are comment-stripped and whitespace-collapsed, so the bare
+     * quoted path is statable exactly and the comment block above the rules cannot pollute it.
+     *
+     * <p>{@code hasSize(1)} is the other half: a {@code GET}-scoped rule added <em>above</em> the
+     * unqualified one — the natural copy-paste from the professionalservice pair — is invisible to
+     * an exact {@code ruleFor} search and to any single-element assertion, and is caught here as a
+     * second matcher.
+     */
+    @Test
+    void theSiblingGatewayPrefixesAreNotMethodScoped() throws IOException {
+        List<String> matchers = matchersInOrder();
+
+        for (String prefix : List.of(PATIENT_GATEWAY, PROFESSIONAL_GATEWAY)) {
+            List<String> stated = matchers
+                .stream()
+                .filter(arguments -> arguments.contains(prefix))
+                .toList();
+
+            assertThat(stated)
+                .as(
+                    "expected exactly one matcher naming %s and found %s. A second one is either a " +
+                        "method-scoped twin — which leaves HEAD to the blanket rules, and they admit an " +
+                        "operator — or a comment leaking into the extraction.",
+                    prefix,
+                    stated
+                )
+                .hasSize(1);
+
+            assertThat(stated.get(0))
+                .as(
+                    "the %s matcher is no longer the bare quoted path, so it is method-scoped (or " +
+                        "otherwise qualified). Scoped to GET, HEAD falls through to the blanket " +
+                        "/services/** rule, which admits an operator — a body-less existence oracle over " +
+                        "another product's accounts. The route's Method=GET predicate is in deploy/, not " +
+                        "here; each layer must hold alone.",
+                    prefix
+                )
+                .isEqualTo('"' + prefix + '"');
+        }
+    }
+
+    /**
+     * <strong>Below the carve-outs, above the blanket rules.</strong> Verbatim in shape from the
+     * professionalservice pair: above the carve-outs these matchers shadow anonymous readiness
+     * (401, and an orchestrator marks the route permanently unhealthy) and close api-docs the wrong
+     * way; below the blanket rules they are dead code that reads as a guarantee — and here dead
+     * code is also a live widening, because the blanket GET rule admits an operator.
+     */
+    @Test
+    void theSiblingGatewayPrefixesSitBelowTheCarveOutsAndAboveTheBlanketServicesRules() throws IOException {
+        List<String> matchers = matchersInOrder();
+        int readiness = indexOf(matchers, READINESS);
+        int apiDocs = indexOf(matchers, API_DOCS);
+        int blanket = indexOf(matchers, BLANKET);
+
+        assertThat(readiness).as("the %s carve-out is gone — readiness ordering cannot be checked", READINESS).isGreaterThan(-1);
+        assertThat(apiDocs).as("the %s carve-out is gone — api-docs ordering cannot be checked", API_DOCS).isGreaterThan(-1);
+        assertThat(blanket).as("the blanket %s rules are gone — the whole /services surface is now unguarded", BLANKET).isGreaterThan(-1);
+
+        for (String prefix : List.of(PATIENT_GATEWAY, PROFESSIONAL_GATEWAY)) {
+            int stated = indexOf(matchers, prefix);
+            assertThat(stated).as(ABSENT_NOT_MISPLACED, prefix).isGreaterThan(-1);
+
+            assertThat(stated)
+                .as(
+                    "%s is now ABOVE the %s carve-out, so it shadows it. Anonymous readiness on this " +
+                        "prefix answers 401 instead of passing — which no test that sends an authenticated " +
+                        "request will notice.",
+                    prefix,
+                    READINESS
+                )
+                .isGreaterThan(readiness);
+
+            assertThat(stated).as("%s is now ABOVE the %s carve-out, so it shadows it.", prefix, API_DOCS).isGreaterThan(apiDocs);
+
+            assertThat(stated)
+                .as(
+                    "%s is now BELOW the blanket %s rules, which already match it — so the explicit rule " +
+                        "is unreachable and pins nothing, while the blanket GET rule quietly admits an " +
+                        "operator to another product's account surface.",
+                    prefix,
+                    BLANKET
+                )
+                .isLessThan(blanket);
+        }
     }
 
     // --- the authentication record (backlog item 75) --------------------------------------------
