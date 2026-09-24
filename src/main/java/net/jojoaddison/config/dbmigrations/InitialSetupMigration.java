@@ -33,7 +33,8 @@ import tech.jhipster.config.JHipsterConstants;
  * <p>That file is the single source of truth for these users: ids, logins, emails, passwords and
  * authorities all come from it. The ids in particular are a cross-service contract —
  * {@code hc-admin-service}'s seed data references the admin and operator ids as {@code managedBy}
- * and {@code createdBy} values, so they must not drift.
+ * and {@code createdBy} values, and since item 123 the admin id and the twelve office-account ids
+ * ({@code …a14}–{@code …a25}) as {@code Profile.accountId} values — so they must not drift.
  *
  * <p>Seeding is <strong>additive</strong>: a user is created only when no user with that login
  * exists, so accounts created through the API survive restarts. Nothing here is ever dropped, and
