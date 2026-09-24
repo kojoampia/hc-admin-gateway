@@ -29,6 +29,126 @@
       "lastName": "User",
       "activated": true,
       "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14",
+      "login": "kampiaaddison",
+      "email": "kampiaaddison@localhost",
+      "password": "Kampiaaddison@01234",
+      "firstName": "Kojo",
+      "lastName": "Ampia-Addison",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15",
+      "login": "kfrimpong",
+      "email": "kfrimpong@localhost",
+      "password": "Kfrimpong@01234",
+      "firstName": "Kwabena",
+      "lastName": "Frimpong",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16",
+      "login": "niosae",
+      "email": "niosae@localhost",
+      "password": "Niosae@01234",
+      "firstName": "Nii",
+      "lastName": "Osae",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17",
+      "login": "aserwaa",
+      "email": "aserwaa@localhost",
+      "password": "Aserwaa@01234",
+      "firstName": "Ama",
+      "lastName": "Serwaa",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18",
+      "login": "yasantewaa",
+      "email": "yasantewaa@localhost",
+      "password": "Yasantewaa@01234",
+      "firstName": "Yaa",
+      "lastName": "Asantewaa",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19",
+      "login": "kdarkwa",
+      "email": "kdarkwa@localhost",
+      "password": "Kdarkwa@01234",
+      "firstName": "Kwaku",
+      "lastName": "Darkwa",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a20",
+      "login": "bsarsah",
+      "email": "bsarsah@localhost",
+      "password": "Bsarsah@01234",
+      "firstName": "Beatrice",
+      "lastName": "Sarsah",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21",
+      "login": "esam",
+      "email": "esam@localhost",
+      "password": "Esam@01234",
+      "firstName": "Emmanuel",
+      "lastName": "Sam",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+      "login": "pbaah",
+      "email": "pbaah@localhost",
+      "password": "Pbaah@01234",
+      "firstName": "Patience",
+      "lastName": "Baah",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a23",
+      "login": "kofosu",
+      "email": "kofosu@localhost",
+      "password": "Kofosu@01234",
+      "firstName": "Kwabena",
+      "lastName": "Ofosu",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a24",
+      "login": "gakator",
+      "email": "gakator@localhost",
+      "password": "Gakator@01234",
+      "firstName": "Gifty",
+      "lastName": "Akator",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a25",
+      "login": "stetteh",
+      "email": "stetteh@localhost",
+      "password": "Stetteh@01234",
+      "firstName": "Solomon",
+      "lastName": "Tetteh",
+      "activated": true,
+      "authorities": ["ROLE_USER"]
     }
   ],
   "test": [

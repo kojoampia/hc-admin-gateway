@@ -78,12 +78,14 @@ class InitialSetupMigrationTest {
         stubExistingAuthorities();
         when(template.exists(any(Query.class), eq(User.class))).thenReturn(false);
 
-        assertThat(runAndCaptureSavedUsers(3))
+        assertThat(runAndCaptureSavedUsers(15))
             .extracting(User::getLogin, User::getEmail)
-            .containsExactlyInAnyOrder(
+            .contains(
                 Tuple.tuple("admin", "admin@localhost"),
                 Tuple.tuple("operator", "operator@localhost"),
-                Tuple.tuple("user", "user@localhost")
+                Tuple.tuple("user", "user@localhost"),
+                Tuple.tuple("kampiaaddison", "kampiaaddison@localhost"),
+                Tuple.tuple("stetteh", "stetteh@localhost")
             );
     }
 
@@ -92,6 +94,13 @@ class InitialSetupMigrationTest {
      * operator ids as {@code managedBy} / {@code createdBy}. They were once "user-1"/"user-2" plus a
      * random UUID for the operator, which left those references dangling and made the operator id
      * change on every startup.
+     *
+     * <p><b>The twelve office accounts ({@code a14}–{@code a25}) are the same contract, one item
+     * later.</b> Item 123 migrated {@code Profile.accountId} in hc-admin-service from the gateway
+     * login to the account's {@code User.id}, and the twelve {@code cred-aN} placeholder profiles
+     * became real accounts here — so each of these ids is referenced verbatim by a
+     * {@code personProfiles} row in that repo's seed. An id changed here without the sibling seed
+     * moving is a profile no login can reach, and nothing fails when that happens.
      */
     @Test
     void shouldSeedStableIdsMatchingTheCrossServiceContract() {
@@ -99,12 +108,24 @@ class InitialSetupMigrationTest {
         stubExistingAuthorities();
         when(template.exists(any(Query.class), eq(User.class))).thenReturn(false);
 
-        assertThat(runAndCaptureSavedUsers(3))
+        assertThat(runAndCaptureSavedUsers(15))
             .extracting(User::getLogin, User::getId)
             .containsExactlyInAnyOrder(
                 Tuple.tuple("admin", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"),
                 Tuple.tuple("operator", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"),
-                Tuple.tuple("user", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13")
+                Tuple.tuple("user", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13"),
+                Tuple.tuple("kampiaaddison", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14"),
+                Tuple.tuple("kfrimpong", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15"),
+                Tuple.tuple("niosae", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16"),
+                Tuple.tuple("aserwaa", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17"),
+                Tuple.tuple("yasantewaa", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18"),
+                Tuple.tuple("kdarkwa", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19"),
+                Tuple.tuple("bsarsah", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a20"),
+                Tuple.tuple("esam", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21"),
+                Tuple.tuple("pbaah", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22"),
+                Tuple.tuple("kofosu", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a23"),
+                Tuple.tuple("gakator", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a24"),
+                Tuple.tuple("stetteh", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a25")
             );
     }
 
@@ -115,12 +136,13 @@ class InitialSetupMigrationTest {
         when(template.exists(any(Query.class), eq(User.class))).thenReturn(false);
 
         // NoOpPasswordEncoder, so the stored value is the cleartext seed password.
-        assertThat(runAndCaptureSavedUsers(3))
+        assertThat(runAndCaptureSavedUsers(15))
             .extracting(User::getLogin, User::getPassword)
-            .containsExactlyInAnyOrder(
+            .contains(
                 Tuple.tuple("admin", "Admin@01234"),
                 Tuple.tuple("user", "User@0123"),
-                Tuple.tuple("operator", "Operator@1234567")
+                Tuple.tuple("operator", "Operator@1234567"),
+                Tuple.tuple("kdarkwa", "Kdarkwa@01234")
             );
     }
 
@@ -135,11 +157,16 @@ class InitialSetupMigrationTest {
         stubExistingAuthorities();
         when(template.exists(any(Query.class), eq(User.class))).thenReturn(false);
 
-        List<User> saved = runAndCaptureSavedUsers(3);
+        List<User> saved = runAndCaptureSavedUsers(15);
 
         assertAuthorities(saved, "user", AuthoritiesConstants.USER);
         assertAuthorities(saved, "admin", AuthoritiesConstants.ADMIN, AuthoritiesConstants.USER);
         assertAuthorities(saved, "operator", AuthoritiesConstants.OPERATOR, AuthoritiesConstants.USER);
+        // The office accounts (item 123) hold the ROLE_USER baseline and nothing else: what an
+        // office profile-holder may do in the console is a decision nobody has taken, and under the
+        // api's read/write split ROLE_USER reaches nothing under /api/**.
+        assertAuthorities(saved, "kampiaaddison", AuthoritiesConstants.USER);
+        assertAuthorities(saved, "stetteh", AuthoritiesConstants.USER);
     }
 
     private void assertAuthorities(List<User> savedUsers, String login, String... expected) {
@@ -235,7 +262,9 @@ class InitialSetupMigrationTest {
     void seedFileShouldBePresentAndParseable() throws Exception {
         try (InputStream inputStream = new ClassPathResource(InitialSetupMigration.SEED_DATA_LOCATION).getInputStream()) {
             InitialSetupMigration.SeedUsers seedUsers = objectMapper.readValue(inputStream, InitialSetupMigration.SeedUsers.class);
-            assertThat(seedUsers.getDev()).hasSize(3);
+            // 3 role accounts plus the 12 office accounts item 123 turned from `cred-aN`
+            // placeholders into real users.
+            assertThat(seedUsers.getDev()).hasSize(15);
             assertThat(seedUsers.getTest()).hasSize(3);
         }
     }

@@ -65,9 +65,11 @@ There is **no frontend and no JPA/SQL layer in this project**. The Angular conso
   | `user`     | `User@0123`        | `a0eebc99-…-a13` | `ROLE_USER`                  |
   | `operator` | `Operator@1234567` | `a0eebc99-…-a12` | `ROLE_OPERATOR`, `ROLE_USER` |
 
+  Since item 123 (2026-09-24) `dev` also carries **twelve office accounts**, ids `a0eebc99-…-a14`–`…-a25`, logins first-initial-plus-surname (`kampiaaddison` … `stetteh`), `ROLE_USER` only — one per office `Profile` in hc-admin-service's `test` seed, which references these ids as `Profile.accountId`. The table above is the three role accounts, not the whole file; count the JSON, not this table.
+
   Under `test` it seeds edge-case fixtures instead: `deactivated`, `noauth`, `malformed`. Those declare no password, so their login is used as one.
 
-  Change accounts by editing the JSON, not the Java. The ids are a cross-service contract matching the `managedBy` / `createdBy` references in `hc-admin-service`'s seed data — **do not change them without updating both**.
+  Change accounts by editing the JSON, not the Java. The ids are a cross-service contract matching the `managedBy` / `createdBy` references in `hc-admin-service`'s seed data — and, since item 123, its `Profile.accountId` values — **do not change them without updating both**. `InitialSetupMigrationTest.shouldSeedStableIdsMatchingTheCrossServiceContract` pins all fifteen `(login, id)` pairs.
 
   The operator deliberately carries `ROLE_USER` alongside `ROLE_OPERATOR`, matching the blueprint and the JHipster convention that every account has `ROLE_USER` as a baseline. It is not a leftover: it was reviewed and kept. Note that no matcher in `SecurityConfiguration` gates on `ROLE_USER` — the rules are `permitAll()`, `hasAuthority(ROLE_ADMIN)`, `hasAnyAuthority(ROLE_ADMIN, ROLE_OPERATOR)` on the `/services/**` reads, or plain `authenticated()` — so this widens nothing at the gateway; it matters only where `ROLE_USER` is tested for directly.
 
